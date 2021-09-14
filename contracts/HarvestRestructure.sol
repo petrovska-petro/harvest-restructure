@@ -347,7 +347,7 @@ contract HarvestRestructure is
 
             emit TreeDistribution(
                 address(cvxCrvHelperVault),
-                cvxCrvToTree,
+                treeVaultPositionGained,
                 block.number,
                 block.timestamp
             );
