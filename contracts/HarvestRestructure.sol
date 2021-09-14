@@ -256,6 +256,8 @@ contract HarvestRestructure is
                 usdcToken.balanceOf(address(this)),
                 getTokenSwapPath(usdc, cvxCrv)
             );
+            // note: here we get a bit extra of cvxCrv perhaps worthy to update `harvestData.cvxCrvHarvested`
+            harvestData.cvxCrvHarvested = cvxCrvToken.balanceOf(address(this));
         }
 
         // 3. Sell 20% of partner tokens for wbtc
