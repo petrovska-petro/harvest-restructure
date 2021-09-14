@@ -441,7 +441,7 @@ contract HarvestRestructure is
     function collectPerformanceFees() external {
         uint256 _fee = cvxCrvToGovernanceAccum;
         require(_fee > 0, "NO_ACCUM_CVXCRV");
-        cvxToGovernanceAccum = 0;
+        cvxCrvToGovernanceAccum = 0;
         cvxCrvHelperVault.depositFor(IController(controller).rewards(), _fee);
 
         emit PerformanceFeeGovernance(
