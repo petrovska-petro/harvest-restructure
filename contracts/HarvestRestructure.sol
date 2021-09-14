@@ -480,7 +480,7 @@ contract HarvestRestructure is
         _onlyGovernance();
         require(
             _ibBTCHarvestShareBps <= MAX_FEE,
-            "excessive-governance-ibBTC-retention-bps"
+            "excessive-governance-ibBTC-harvest-share-bps"
         );
         ibBTCHarvestShareBps = _ibBTCHarvestShareBps;
     }
