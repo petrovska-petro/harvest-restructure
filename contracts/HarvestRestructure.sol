@@ -110,6 +110,7 @@ contract HarvestRestructure is
     uint256 public pid;
     address public badgerTree;
     address public yieldDistributor;
+    address public bTokenAddress;
     address public badgerSettPeak;
     ISettV4 public cvxHelperVault;
     ISettV4 public cvxCrvHelperVault;
@@ -121,7 +122,7 @@ contract HarvestRestructure is
         address _controller,
         address _keeper,
         address _guardian,
-        address[6] memory _wantConfig,
+        address[7] memory _wantConfig,
         uint256 _pid,
         uint256[3] memory _feeConfig,
         CurvePoolConfig memory _curvePool
@@ -142,6 +143,7 @@ contract HarvestRestructure is
 
         yieldDistributor = _wantConfig[4];
         badgerSettPeak = _wantConfig[5];
+        bTokenAddress = _wantConfig[6];
 
         pid = _pid;
 
@@ -468,8 +470,6 @@ contract HarvestRestructure is
     }
 
     function _getibBTCHarvestShare() internal returns (uint256) {
-        address bTokenAddress = IController(controller).vaults(want);
-
         uint256 peakShare = IERC20Upgradeable(bTokenAddress).balanceOf(
             badgerSettPeak
         );
