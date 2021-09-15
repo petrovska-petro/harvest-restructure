@@ -36,6 +36,8 @@ contract HarvestRestructure is
         uint256 timestamp
     );
 
+    event TendState(uint256 crvTended, uint256 cvxTended, uint256 cvxCrvTended);
+
     event PerformanceFeeGovernance(
         address indexed destination,
         address indexed token,
@@ -49,6 +51,12 @@ contract HarvestRestructure is
     struct HarvestData {
         uint256 cvxCrvHarvested;
         uint256 cvxHarvested;
+    }
+
+    struct TendData {
+        uint256 crvTended;
+        uint256 cvxTended;
+        uint256 cvxCrvTended;
     }
 
     struct CurvePoolConfig {
@@ -186,6 +194,11 @@ contract HarvestRestructure is
         path[2] = wbtc;
         _setTokenSwapPath(cvx, wbtc, path);
 
+        path = new address[](2);
+        path[0] = crv;
+        path[1] = cvxCrv;
+        _setTokenSwapPath(crv, cvxCrv, path);
+
         _initializeApprovals();
     }
 
@@ -259,6 +272,65 @@ contract HarvestRestructure is
         protectedTokens[2] = cvx;
         protectedTokens[3] = cvxCrv;
         return protectedTokens;
+    }
+
+    function _tendGainsFromPositions() internal {
+        // Harvest CRV, CVX, cvxCRV, 3CRV, and extra rewards tokens from staking positions
+        // Note: Always claim extras
+        baseRewardsPool.getReward(address(this), true);
+
+        if (cvxCrvRewardsPool.earned(address(this)) > 0) {
+            cvxCrvRewardsPool.getReward(address(this), true);
+        }
+
+        if (cvxRewardsPool.earned(address(this)) > 0) {
+            cvxRewardsPool.getReward(false);
+        }
+    }
+
+    /// @notice The more frequent the tend, the higher returns will be
+    function tend() external whenNotPaused returns (TendData memory) {
+        _onlyAuthorizedActors();
+
+        TendData memory tendData;
+
+        // 1. Harvest gains from positions
+        _tendGainsFromPositions();
+
+        // Track harvested coins, before conversion
+        tendData.crvTended = crvToken.balanceOf(address(this));
+
+        // 2. Convert CRV -> cvxCRV
+        if (tendData.crvTended > 0) {
+            _swapExactTokensForTokens(
+                sushiswap,
+                crv,
+                tendData.crvTended,
+                getTokenSwapPath(crv, cvxCrv)
+            );
+        }
+
+        // Track harvested + converted coins
+        tendData.cvxCrvTended = cvxCrvToken.balanceOf(address(this));
+        tendData.cvxTended = cvxToken.balanceOf(address(this));
+
+        // 3. Stake all cvxCRV
+        if (tendData.cvxCrvTended > 0) {
+            cvxCrvRewardsPool.stake(tendData.cvxCrvTended);
+        }
+
+        // 4. Stake all CVX
+        if (tendData.cvxTended > 0) {
+            cvxRewardsPool.stake(cvxToken.balanceOf(address(this)));
+        }
+
+        emit Tend(0);
+        emit TendState(
+            tendData.crvTended,
+            tendData.cvxTended,
+            tendData.cvxCrvTended
+        );
+        return tendData;
     }
 
     function harvest() external {
@@ -450,7 +522,8 @@ contract HarvestRestructure is
             cvxToWbtc,
             getTokenSwapPath(cvx, wbtc)
         );
-        totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT]);
+        // it has one index less than cvxCrv -> wbtc
+        totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT - 1]);
 
         return totalWbtc;
     }
@@ -475,7 +548,8 @@ contract HarvestRestructure is
         );
         uint256 totalSupply = IERC20Upgradeable(bTokenAddress).totalSupply();
 
-        return peakShare.div(totalSupply).mul(MAX_FEE);
+        return
+            peakShare.mul(1 ether).div(totalSupply).mul(MAX_FEE).div(1 ether);
     }
 
     function transferWbtcTokenYield() external {
