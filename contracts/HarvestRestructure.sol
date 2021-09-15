@@ -603,6 +603,11 @@ contract HarvestRestructure is
         autoCompoundingBps = _bps;
     }
 
+    function setTreeBps(uint256 _treeBps) external {
+        _onlyGovernance();
+        treeBps = _treeBps;
+    }
+
     function setPid(uint256 _pid) external {
         _onlyGovernance();
         pid = _pid; // LP token pool ID
