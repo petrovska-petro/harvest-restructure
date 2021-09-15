@@ -63,7 +63,6 @@ contract HarvestRestructure is
     // ===== strategy params =====
     uint256 public autoCompoundingBps = 2000;
     uint256 public ibBTCRetentionBps = 6000;
-    uint256 public ibBTCHarvestShareBps = 1500;
     uint256 public treeBps = 6000;
 
     // ===== accum variables =====
@@ -111,6 +110,7 @@ contract HarvestRestructure is
     uint256 public pid;
     address public badgerTree;
     address public yieldDistributor;
+    address public badgerSettPeak;
     ISettV4 public cvxHelperVault;
     ISettV4 public cvxCrvHelperVault;
     CurvePoolConfig public curvePool;
@@ -121,8 +121,9 @@ contract HarvestRestructure is
         address _controller,
         address _keeper,
         address _guardian,
-        address[4] memory _wantConfig,
+        address[6] memory _wantConfig,
         uint256 _pid,
+        uint256[3] memory _feeConfig,
         CurvePoolConfig memory _curvePool
     ) public initializer whenNotPaused {
         __BaseStrategy_init(
@@ -139,12 +140,17 @@ contract HarvestRestructure is
         cvxHelperVault = ISettV4(_wantConfig[2]);
         cvxCrvHelperVault = ISettV4(_wantConfig[3]);
 
+        yieldDistributor = _wantConfig[4];
+        badgerSettPeak = _wantConfig[5];
+
         pid = _pid;
 
         IBooster.PoolInfo memory poolInfo = booster.poolInfo(pid);
         baseRewardsPool = IBaseRewardsPool(poolInfo.crvRewards);
 
-        performanceFeeGovernance = 2000;
+        performanceFeeGovernance = _feeConfig[0];
+        performanceFeeStrategist = _feeConfig[1];
+        withdrawalFee = _feeConfig[2];
 
         // Approvals: Staking Pools
         IERC20Upgradeable(want).approve(address(booster), MAX_UINT_256);
@@ -177,6 +183,8 @@ contract HarvestRestructure is
         path[1] = weth;
         path[2] = wbtc;
         _setTokenSwapPath(cvx, wbtc, path);
+
+        _initializeApprovals();
     }
 
     /// ===== View Functions =====
@@ -190,6 +198,11 @@ contract HarvestRestructure is
         require(address(crv) != _asset, "crv");
         require(address(cvx) != _asset, "cvx");
         require(address(cvxCrv) != _asset, "cvxCrv");
+    }
+
+    function _initializeApprovals() internal {
+        cvxToken.approve(address(cvxHelperVault), MAX_UINT_256);
+        cvxCrvToken.approve(address(cvxCrvHelperVault), MAX_UINT_256);
     }
 
     function _deposit(uint256 _want) internal override {
@@ -230,6 +243,20 @@ contract HarvestRestructure is
 
     function balanceOfPool() public view override returns (uint256) {
         return baseRewardsPool.balanceOf(address(this));
+    }
+
+    function getProtectedTokens()
+        public
+        view
+        override
+        returns (address[] memory)
+    {
+        address[] memory protectedTokens = new address[](4);
+        protectedTokens[0] = want;
+        protectedTokens[1] = crv;
+        protectedTokens[2] = cvx;
+        protectedTokens[3] = cvxCrv;
+        return protectedTokens;
     }
 
     function harvest() external {
@@ -398,8 +425,16 @@ contract HarvestRestructure is
     {
         uint256 totalWbtc = 0;
         // this approach may not be the most "secure" perhaps, but only use for estimation of portion
-        uint256 cvxToWbtc = _partnerTokenibBTCPortion(_cvxAmount);
-        uint256 cvxCrvToWbtc = _partnerTokenibBTCPortion(_cvxCrvAmount);
+        uint256 ibBTCHarvestShareBps = _getibBTCHarvestShare();
+
+        uint256 cvxToWbtc = _partnerTokenibBTCPortion(
+            _cvxAmount,
+            ibBTCHarvestShareBps
+        );
+        uint256 cvxCrvToWbtc = _partnerTokenibBTCPortion(
+            _cvxCrvAmount,
+            ibBTCHarvestShareBps
+        );
 
         // get wbtc rates
         uint256[] memory minOuts = IUniswapRouterV2(sushiswap).getAmountsOut(
@@ -418,18 +453,29 @@ contract HarvestRestructure is
         return totalWbtc;
     }
 
-    function _partnerTokenibBTCPortion(uint256 _tokenAmount)
-        internal
-        returns (uint256)
-    {
+    function _partnerTokenibBTCPortion(
+        uint256 _tokenAmount,
+        uint256 _ibBTCHarvestShareBps
+    ) internal returns (uint256) {
         return
             _tokenAmount
                 .mul(MAX_FEE.sub(autoCompoundingBps))
                 .div(MAX_FEE)
                 .mul(ibBTCRetentionBps)
                 .div(MAX_FEE)
-                .mul(ibBTCHarvestShareBps)
+                .mul(_ibBTCHarvestShareBps)
                 .div(MAX_FEE);
+    }
+
+    function _getibBTCHarvestShare() internal returns (uint256) {
+        address bTokenAddress = IController(controller).vaults(want);
+
+        uint256 peakShare = IERC20Upgradeable(bTokenAddress).balanceOf(
+            badgerSettPeak
+        );
+        uint256 totalSupply = IERC20Upgradeable(bTokenAddress).totalSupply();
+
+        return peakShare.div(totalSupply).mul(MAX_FEE);
     }
 
     function transferWbtcTokenYield() external {
@@ -478,12 +524,13 @@ contract HarvestRestructure is
         ibBTCRetentionBps = _ibBTCRetentionBps;
     }
 
-    function setibBTCHarvestShareBps(uint256 _ibBTCHarvestShareBps) external {
+    function setAutoCompoundingBps(uint256 _bps) external {
         _onlyGovernance();
-        require(
-            _ibBTCHarvestShareBps <= MAX_FEE,
-            "excessive-governance-ibBTC-harvest-share-bps"
-        );
-        ibBTCHarvestShareBps = _ibBTCHarvestShareBps;
+        autoCompoundingBps = _bps;
+    }
+
+    function setPid(uint256 _pid) external {
+        _onlyGovernance();
+        pid = _pid; // LP token pool ID
     }
 }
