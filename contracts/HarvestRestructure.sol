@@ -48,6 +48,12 @@ contract HarvestRestructure is
 
     event DistributeWbtcYield(uint256 amount, uint256 indexed blockNumber);
 
+    event HarvestCustom(
+        uint256 cvxCrvHarvested,
+        uint256 cvxHarvested,
+        uint256 indexed blockNumber
+    );
+
     struct HarvestData {
         uint256 cvxCrvHarvested;
         uint256 cvxHarvested;
@@ -336,6 +342,8 @@ contract HarvestRestructure is
     function harvest() external {
         HarvestData memory harvestData;
 
+        uint256 totalWantBefore = balanceOf();
+
         // 1. grab rewards
         baseRewardsPool.getReward(address(this), true);
         cvxCrvRewardsPool.withdraw(
@@ -491,6 +499,14 @@ contract HarvestRestructure is
                 block.timestamp
             );
         }
+
+        uint256 totalWantAfter = balanceOf();
+        require(
+            totalWantAfter >= totalWantBefore,
+            "harvest-total-want-must-not-decrease"
+        );
+
+        emit HarvestCustom(harvestData.cvxCrvHarvested, harvestData.cvxHarvested, block.number);
     }
 
     function _calcibBTCPortion(uint256 _cvxCrvAmount, uint256 _cvxAmount)

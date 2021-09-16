@@ -65,7 +65,7 @@ def cvxcrv(interface):
 
 
 @pytest.fixture(scope="module")
-def strategy(HarvestRestructure, config_addresses, deployer):
+def strategy(HarvestRestructure, config_addresses, deployer, interface):
     strategy = deployer.deploy(HarvestRestructure)
 
     # crvRenWBTC test
@@ -93,6 +93,10 @@ def strategy(HarvestRestructure, config_addresses, deployer):
         fee_config,
         curve_pool,
     )
+
+    # whitelist strat for the deposits
+    interface.ISettV4(cvxHelperVault).approveContractAccess(strategy.address, {'from': config_addresses[0]})
+    interface.ISettV4(cvxCrvHelperVault).approveContractAccess(strategy.address, {'from': config_addresses[0]})
 
     yield strategy
 
