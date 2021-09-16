@@ -628,4 +628,9 @@ contract HarvestRestructure is
         _onlyGovernance();
         pid = _pid; // LP token pool ID
     }
+
+    function setThresholdThreeCrv(uint256 _thresholdThreeCrv) external {
+        _onlyGovernance();
+        thresholdThreeCrv = _thresholdThreeCrv;
+    }
 }
