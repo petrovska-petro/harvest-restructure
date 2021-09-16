@@ -580,7 +580,7 @@ contract HarvestRestructure is
     /// @dev Gas saving: this method is strip out from harvest and called at whatever convenience
     function transferWbtcTokenYield() external {
         uint256 _fee = wbtcTokenYieldAccum;
-        require(_fee > 0, "NO_ACCUM");
+        require(_fee > 0, "NO_ACCUM_WBTC");
         wbtcTokenYieldAccum = 0;
         wbtcToken.transfer(yieldDistributor, _fee);
         emit DistributeWbtcYield(_fee, block.number);

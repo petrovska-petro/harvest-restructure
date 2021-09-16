@@ -5,7 +5,7 @@ crvRenWBTC_address = "0x49849C98ae39Fff122806C06791Fa73784FB3675"
 tree_address = "0x660802Fc641b154aBA66a62137e71f331B6d787A"
 cvxHelperVault = "0x53C8E199eb2Cb7c01543C137078a038937a68E40"
 cvxCrvHelperVault = "0x2B5455aac8d64C14786c3a29858E43b5945819C0"
-yieldDistributor = "0xB65cef03b9B89f99517643226d76e286ee999e77"
+yieldDistributor = "0x55e4d16f9c3041EfF17Ca32850662f3e9Dddbce7"
 badgerSettPeak = "0x41671BA1abcbA387b9b2B752c205e22e916BE6e3"
 bTokenAddress = "0x6dEf55d2e18486B9dDfaA075bc4e4EE0B28c1545"
 
@@ -13,6 +13,7 @@ CRV_ADDR = "0xD533a949740bb3306d119CC777fa900bA034cd52"
 CVX_ADDR = "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B"
 CVXCRV_ADDR = "0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"
 THREE_CRV_ADDR = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+WBTC_ADDR = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
 
 
 @pytest.fixture(scope="module")
@@ -46,6 +47,11 @@ def guardian(accounts):
 
 
 @pytest.fixture(scope="module")
+def yield_distributor_dummy(accounts):
+    yield accounts.at(yieldDistributor, force=True)
+
+
+@pytest.fixture(scope="module")
 def config_addresses(governance, strategist, controller, keeper, guardian):
     yield [governance, strategist, controller, keeper, guardian]
 
@@ -71,7 +77,22 @@ def three_crv(interface):
 
 
 @pytest.fixture(scope="module")
-def strategy(HarvestRestructure, config_addresses, deployer, interface):
+def wbtc(interface):
+    yield interface.ERC20(WBTC_ADDR)
+
+
+@pytest.fixture(scope="module")
+def bCVX(interface):
+    yield interface.ISettV4(cvxHelperVault)
+
+
+@pytest.fixture(scope="module")
+def bCVXCRV(interface):
+    yield interface.ISettV4(cvxCrvHelperVault)
+
+
+@pytest.fixture(scope="module")
+def strategy(HarvestRestructure, config_addresses, deployer, bCVX, bCVXCRV):
     strategy = deployer.deploy(HarvestRestructure)
 
     # crvRenWBTC test
@@ -101,12 +122,8 @@ def strategy(HarvestRestructure, config_addresses, deployer, interface):
     )
 
     # whitelist strat for the deposits
-    interface.ISettV4(cvxHelperVault).approveContractAccess(
-        strategy.address, {"from": config_addresses[0]}
-    )
-    interface.ISettV4(cvxCrvHelperVault).approveContractAccess(
-        strategy.address, {"from": config_addresses[0]}
-    )
+    bCVX.approveContractAccess(strategy.address, {"from": config_addresses[0]})
+    bCVXCRV.approveContractAccess(strategy.address, {"from": config_addresses[0]})
 
     yield strategy
 

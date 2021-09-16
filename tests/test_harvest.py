@@ -22,8 +22,6 @@ def test_harvest(strategy, governance, whale_crv, whale_cvx, whale_cvxcrv):
     )
     assert strategy.wbtcTokenYieldAccum() > 0
 
-    strategy.collectPerformanceFees()
-
 
 # this just to get the high range on the gas profiling as it will add 2 tx extras
 def test_harvest_swap_3crv(
