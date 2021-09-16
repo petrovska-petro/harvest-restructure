@@ -19,6 +19,14 @@ ISettV4 <Contract>
    └─ approveContractAccess -  avg:   46281  avg (confirmed):   46281  low:   46281  high:   46281
 ```
 
+Looking at some of the current ones which could use this harvest restructure are hovering around 1.8m of gas used. Then, say after 10 harvest executed at 63.88gwei using the new structure could represent savings on ETH burning rates:
+
+- 10 * 1800000 * 0.000000063882838667 = 1.149 ETH (OLD)
+- 10 * 1498806 * 0.000000063882838667 = 0.957 ETH (no 3crv swap)
+- 10 * 1559263 * 0.000000063882838667 = 0.996 ETH (with 3crv swap)
+
+At current ETH=3600USD, will represent in 10 harvest a saving of $691 on avg gas profilling and $550 while swapping thru 3CRV for all of the 10 harversts.
+
 Harvest trace sample:
 
 ```
