@@ -64,6 +64,7 @@ def cvx(interface):
 def cvxcrv(interface):
     yield interface.ERC20(CVXCRV_ADDR)
 
+
 @pytest.fixture
 def three_crv(interface):
     yield interface.ERC20(THREE_CRV_ADDR)
@@ -132,6 +133,7 @@ def whale_cvxcrv(accounts, cvxcrv, strategy):
     whale_cvxcrv = accounts.at("0xB65cef03b9B89f99517643226d76e286ee999e77", force=True)
     cvxcrv.transfer(strategy, cvxcrv_amount, {"from": whale_cvxcrv})
     yield whale_cvx
+
 
 @pytest.fixture
 def whale_three_crv(accounts, three_crv, strategy):

@@ -506,15 +506,22 @@ contract HarvestRestructure is
             "harvest-total-want-must-not-decrease"
         );
 
-        emit HarvestCustom(harvestData.cvxCrvHarvested, harvestData.cvxHarvested, block.number);
+        emit HarvestCustom(
+            harvestData.cvxCrvHarvested,
+            harvestData.cvxHarvested,
+            block.number
+        );
     }
 
+    /**
+     * @dev Calculates the amount of wbtc to deduct from the amount acquired from selling 20% of the partner tokens, accum in `wbtcTokenYieldAccum`
+     * @param _cvxCrvAmount harvested amount of CVXCRV on this round of harvest
+     * @param _cvxAmount harvested amount of CVX on this round of harvest
+     **/
     function _calcibBTCPortion(uint256 _cvxCrvAmount, uint256 _cvxAmount)
         internal
-        returns (uint256)
+        returns (uint256 totalWbtc)
     {
-        uint256 totalWbtc = 0;
-        // this approach may not be the most "secure" perhaps, but only use for estimation of portion
         uint256 ibBTCHarvestShareBps = _getibBTCHarvestShare();
 
         uint256 cvxToWbtc = _partnerTokenibBTCPortion(
@@ -540,10 +547,9 @@ contract HarvestRestructure is
         );
         // it has one index less than cvxCrv -> wbtc
         totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT - 1]);
-
-        return totalWbtc;
     }
 
+    /// @dev Calculates the amount of partnet token, which will be used to be converted for WBTC
     function _partnerTokenibBTCPortion(
         uint256 _tokenAmount,
         uint256 _ibBTCHarvestShareBps
@@ -558,6 +564,7 @@ contract HarvestRestructure is
                 .div(MAX_FEE);
     }
 
+    /// @dev Calculates the % of harvest share comparing what is on the peak and the total supply of its appropiate bToken
     function _getibBTCHarvestShare() internal returns (uint256) {
         uint256 peakShare = IERC20Upgradeable(bTokenAddress).balanceOf(
             badgerSettPeak
@@ -568,6 +575,9 @@ contract HarvestRestructure is
             peakShare.mul(1 ether).div(totalSupply).mul(MAX_FEE).div(1 ether);
     }
 
+    /// ===== Actions to transfers accumulated tokens =====
+
+    /// @dev Gas saving: this method is strip out from harvest and called at whatever convenience
     function transferWbtcTokenYield() external {
         uint256 _fee = wbtcTokenYieldAccum;
         require(_fee > 0, "NO_ACCUM");
@@ -576,14 +586,17 @@ contract HarvestRestructure is
         emit DistributeWbtcYield(_fee, block.number);
     }
 
+    /// @dev Gas saving: this method is strip out from harvest to allow accum a lump sum for later tx to dev_multi
     function collectPerformanceFees() external {
+        address recipient = IController(controller).rewards();
+
         uint256 _fee = cvxCrvToGovernanceAccum;
         require(_fee > 0, "NO_ACCUM_CVXCRV");
         cvxCrvToGovernanceAccum = 0;
-        cvxCrvHelperVault.depositFor(IController(controller).rewards(), _fee);
+        cvxCrvHelperVault.depositFor(recipient, _fee);
 
         emit PerformanceFeeGovernance(
-            IController(controller).rewards(),
+            recipient,
             cvxCrv,
             _fee,
             block.number,
@@ -593,10 +606,10 @@ contract HarvestRestructure is
         _fee = cvxToGovernanceAccum;
         require(_fee > 0, "NO_ACCUM_CVX");
         cvxToGovernanceAccum = 0;
-        cvxHelperVault.depositFor(IController(controller).rewards(), _fee);
+        cvxHelperVault.depositFor(recipient, _fee);
 
         emit PerformanceFeeGovernance(
-            IController(controller).rewards(),
+            recipient,
             cvx,
             _fee,
             block.number,

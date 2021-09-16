@@ -1,6 +1,7 @@
 from brownie import chain
 from pytest import approx
 
+
 def test_harvest(strategy, governance, whale_crv, whale_cvx, whale_cvxcrv):
     strategy.tend({"from": governance})
     chain.mine(10)
@@ -10,7 +11,7 @@ def test_harvest(strategy, governance, whale_crv, whale_cvx, whale_cvxcrv):
     events = tx.events
 
     perf_fee = strategy.performanceFeeGovernance() / strategy.MAX_FEE()
-    
+
     assert (
         approx(strategy.cvxToGovernanceAccum())
         == events["HarvestCustom"]["cvxHarvested"] * perf_fee
@@ -21,9 +22,13 @@ def test_harvest(strategy, governance, whale_crv, whale_cvx, whale_cvxcrv):
     )
     assert strategy.wbtcTokenYieldAccum() > 0
 
+    strategy.collectPerformanceFees()
+
 
 # this just to get the high range on the gas profiling as it will add 2 tx extras
-def test_harvest_swap_3crv(strategy, governance, whale_crv, whale_cvx, whale_cvxcrv, whale_three_crv):
+def test_harvest_swap_3crv(
+    strategy, governance, whale_crv, whale_cvx, whale_cvxcrv, whale_three_crv
+):
     strategy.tend({"from": governance})
     chain.mine(10)
 
