@@ -12,6 +12,7 @@ bTokenAddress = "0x6dEf55d2e18486B9dDfaA075bc4e4EE0B28c1545"
 CRV_ADDR = "0xD533a949740bb3306d119CC777fa900bA034cd52"
 CVX_ADDR = "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B"
 CVXCRV_ADDR = "0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"
+THREE_CRV_ADDR = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
 
 
 @pytest.fixture(scope="module")
@@ -63,6 +64,10 @@ def cvx(interface):
 def cvxcrv(interface):
     yield interface.ERC20(CVXCRV_ADDR)
 
+@pytest.fixture
+def three_crv(interface):
+    yield interface.ERC20(THREE_CRV_ADDR)
+
 
 @pytest.fixture(scope="module")
 def strategy(HarvestRestructure, config_addresses, deployer, interface):
@@ -95,8 +100,12 @@ def strategy(HarvestRestructure, config_addresses, deployer, interface):
     )
 
     # whitelist strat for the deposits
-    interface.ISettV4(cvxHelperVault).approveContractAccess(strategy.address, {'from': config_addresses[0]})
-    interface.ISettV4(cvxCrvHelperVault).approveContractAccess(strategy.address, {'from': config_addresses[0]})
+    interface.ISettV4(cvxHelperVault).approveContractAccess(
+        strategy.address, {"from": config_addresses[0]}
+    )
+    interface.ISettV4(cvxCrvHelperVault).approveContractAccess(
+        strategy.address, {"from": config_addresses[0]}
+    )
 
     yield strategy
 
@@ -123,3 +132,12 @@ def whale_cvxcrv(accounts, cvxcrv, strategy):
     whale_cvxcrv = accounts.at("0xB65cef03b9B89f99517643226d76e286ee999e77", force=True)
     cvxcrv.transfer(strategy, cvxcrv_amount, {"from": whale_cvxcrv})
     yield whale_cvx
+
+@pytest.fixture
+def whale_three_crv(accounts, three_crv, strategy):
+    threee_crv_amount = Wei("200 ether")
+    whale_three_crv = accounts.at(
+        "0xA49b7ae3dB1A62E78245aa732E045dAc922eb183", force=True
+    )
+    three_crv.transfer(strategy, threee_crv_amount, {"from": whale_three_crv})
+    yield whale_three_crv

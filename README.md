@@ -7,6 +7,18 @@ On each harvest:
 - ibbtc contract gets the smaller of 20% of the total harvest or 60% of the value of the tokens going to ibBTC redeposited as BTC yield (tokens sold)
 - everything else distributed to vault depositors as normal
 
+Gas profilling:
+
+```
+HarvestRestructure <Contract>
+   ├─ constructor           -  avg: 5400554  avg (confirmed): 5400554  low: 5400554  high: 5400554
+   ├─ harvest               -  avg: 1529034  avg (confirmed): 1529034  low: 1498806  high: 1559263
+   ├─ initiliazed           -  avg:  984439  avg (confirmed):  984439  low:  984439  high:  984439
+   └─ tend                  -  avg:  367088  avg (confirmed):  367088  low:  318932  high:  415244
+ISettV4 <Contract>
+   └─ approveContractAccess -  avg:   46281  avg (confirmed):   46281  low:   46281  high:   46281
+```
+
 Harvest trace sample:
 
 ```
