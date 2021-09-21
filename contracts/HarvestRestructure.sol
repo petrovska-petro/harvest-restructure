@@ -368,6 +368,8 @@ contract HarvestRestructure is
             // note: here we get a bit extra of cvxCrv perhaps worthy to update `harvestData.cvxCrvHarvested`
             harvestData.cvxCrvHarvested = cvxCrvToken.balanceOf(address(this));
         }
+        
+        uint256 _wbtcBefore = wbtcToken.balanceOf(address(this));
 
         // 3. Sell 20% of partner tokens for wbtc
         if (harvestData.cvxCrvHarvested > 0) {
@@ -397,9 +399,9 @@ contract HarvestRestructure is
         }
 
         // 4. check value of wbtc and divide between yield distributor and autocompound
-        uint256 wbtcBalance = wbtcToken.balanceOf(address(this));
+        uint256 wbtcEarned = wbtcToken.balanceOf(address(this)).sub(_wbtcBefore);
 
-        if (wbtcBalance > 0) {
+        if (wbtcEarned > 0) {
             // 4.1 find out amount to be sent to yield-distributor and accumulate
             uint256 wbtcToYieldDistr = _calcibBTCPortion(
                 harvestData.cvxCrvHarvested,
@@ -407,7 +409,7 @@ contract HarvestRestructure is
             );
             wbtcTokenYieldAccum = wbtcTokenYieldAccum.add(wbtcToYieldDistr);
             // 4.2 the rest is autocompounded
-            uint256 wbtcToCompound = wbtcBalance.sub(wbtcToYieldDistr);
+            uint256 wbtcToCompound = wbtcEarned.sub(wbtcToYieldDistr);
             _add_liquidity_single_coin(
                 curvePool.swap,
                 want,
