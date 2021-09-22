@@ -48,12 +48,6 @@ contract HarvestRestructure is
 
     event DistributeWbtcYield(uint256 amount, uint256 indexed blockNumber);
 
-    event HarvestCustom(
-        uint256 cvxCrvHarvested,
-        uint256 cvxHarvested,
-        uint256 indexed blockNumber
-    );
-
     struct HarvestData {
         uint256 cvxCrvHarvested;
         uint256 cvxHarvested;
@@ -335,7 +329,7 @@ contract HarvestRestructure is
         return tendData;
     }
 
-    function harvest() external {
+    function harvest() external returns (uint256 harvested) {
         HarvestData memory harvestData;
 
         uint256 totalWantBefore = balanceOf();
@@ -507,17 +501,11 @@ contract HarvestRestructure is
             );
         }
 
-        uint256 totalWantAfter = balanceOf();
-        require(
-            totalWantAfter >= totalWantBefore,
-            "harvest-total-want-must-not-decrease"
-        );
+        uint256 earned = balanceOf().sub(totalWantBefore);
 
-        emit HarvestCustom(
-            harvestData.cvxCrvHarvested,
-            harvestData.cvxHarvested,
-            block.number
-        );
+        emit Harvest(earned, block.number);
+
+        return earned;
     }
 
     /**
