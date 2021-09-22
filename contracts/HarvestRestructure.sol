@@ -206,11 +206,6 @@ contract HarvestRestructure is
         path[2] = wbtc;
         _setTokenSwapPath(cvx, wbtc, path);
 
-        path = new address[](2);
-        path[0] = crv;
-        path[1] = cvxCrv;
-        _setTokenSwapPath(crv, cvxCrv, path);
-
         _initializeApprovals();
     }
 
