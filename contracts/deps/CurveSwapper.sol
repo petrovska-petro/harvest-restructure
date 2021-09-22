@@ -2,11 +2,7 @@
 
 pragma solidity ^0.6.11;
 
-import "@openzeppelin-upgradeable/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/math/SafeMathUpgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/utils/AddressUpgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/utils/PausableUpgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/token/ERC20/SafeERC20Upgradeable.sol";
+
 import "interfaces/curve/ICurveFi.sol";
 import "interfaces/curve/ICurveExchange.sol";
 import "interfaces/curve/ICurveFactory.sol";
@@ -18,10 +14,6 @@ import "./BaseSwapper.sol";
     - Sushiswap support in addition to Uniswap
 */
 contract CurveSwapper is BaseSwapper {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-    using AddressUpgradeable for address;
-    using SafeMathUpgradeable for uint256;
-
     address public constant addressProvider =
         0x0000000022D53366457F9d5E68Ec105046FC4383;
 
@@ -49,6 +41,27 @@ contract CurveSwapper is BaseSwapper {
         }
     }
 
+    function _getDy(
+        address _from,
+        address _to,
+        uint256 _index,
+        uint256 _dx
+    ) internal returns (uint256 minOut) {
+        address factoryAddress = ICurveRegistryAddressProvider(addressProvider)
+            .get_address(metaPoolFactoryId);
+        address poolAddress = ICurveFactory(factoryAddress).find_pool_for_coins(
+            _from,
+            _to,
+            _index
+        );
+        (int128 i, int128 j, ) = ICurveFactory(factoryAddress).get_coin_indices(
+            poolAddress,
+            _from,
+            _to
+        );
+        minOut = ICurveFi(poolAddress).get_dy(i, j, _dx);
+    }
+
     function _add_liquidity_single_coin(
         address swap,
         address pool,
@@ -74,30 +87,6 @@ contract CurveSwapper is BaseSwapper {
         } else {
             revert("Invalid number of amount elements");
         }
-    }
-
-    function _add_liquidity(
-        address pool,
-        uint256[2] memory amounts,
-        uint256 min_mint_amount
-    ) internal {
-        ICurveFi(pool).add_liquidity(amounts, min_mint_amount);
-    }
-
-    function _add_liquidity(
-        address pool,
-        uint256[3] memory amounts,
-        uint256 min_mint_amount
-    ) internal {
-        ICurveFi(pool).add_liquidity(amounts, min_mint_amount);
-    }
-
-    function _add_liquidity(
-        address pool,
-        uint256[4] memory amounts,
-        uint256 min_mint_amount
-    ) internal {
-        ICurveFi(pool).add_liquidity(amounts, min_mint_amount);
     }
 
     function _remove_liquidity_one_coin(

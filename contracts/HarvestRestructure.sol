@@ -113,7 +113,7 @@ contract HarvestRestructure is
         0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
 
     uint256 public constant MAX_UINT_256 = uint256(-1);
-    uint256 public constant WBTC_INDEX_OUTPUT = 3;
+    uint256 public constant WBTC_INDEX_OUTPUT = 2;
     uint256 public constant metaPoolIndex = 2;
 
     uint256 public pid;
@@ -290,10 +290,8 @@ contract HarvestRestructure is
     }
 
     /// @notice The more frequent the tend, the higher returns will be
-    function tend() external whenNotPaused returns (TendData memory) {
+    function tend() external whenNotPaused returns (TendData memory tendData) {
         _onlyAuthorizedActors();
-
-        TendData memory tendData;
 
         // 1. Harvest gains from positions
         _tendGainsFromPositions();
@@ -320,16 +318,14 @@ contract HarvestRestructure is
             cvxRewardsPool.stake(cvxToken.balanceOf(address(this)));
         }
 
-        emit Tend(0);
         emit TendState(
             tendData.crvTended,
             tendData.cvxTended,
             tendData.cvxCrvTended
         );
-        return tendData;
     }
 
-    function harvest() external whenNotPaused returns (uint256 harvested) {
+    function harvest() external returns (uint256 harvested) {
         HarvestData memory harvestData;
 
         uint256 totalWantBefore = balanceOf();
@@ -528,8 +524,8 @@ contract HarvestRestructure is
 
         // get wbtc rates
         uint256[] memory minOuts = IUniswapRouterV2(sushiswap).getAmountsOut(
-            cvxCrvToWbtc,
-            getTokenSwapPath(cvxCrv, wbtc)
+            _getDy(cvxCrv, crv, metaPoolIndex, cvxCrvToWbtc),
+            getTokenSwapPath(crv, wbtc)
         );
         // 3rd index is the wbtc amount estimation
         totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT]);
@@ -539,7 +535,7 @@ contract HarvestRestructure is
             getTokenSwapPath(cvx, wbtc)
         );
         // it has one index less than cvxCrv -> wbtc
-        totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT - 1]);
+        totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT]);
     }
 
     /// @dev Calculates the amount of partnet token, which will be used to be converted for WBTC
@@ -573,7 +569,7 @@ contract HarvestRestructure is
     /// @dev Gas saving: this method is strip out from harvest and called at whatever convenience
     function transferWbtcTokenYield() external {
         uint256 _fee = wbtcTokenYieldAccum;
-        require(_fee > 0, "NO_ACCUM_WBTC");
+        require(_fee > 0, "0!");
         wbtcTokenYieldAccum = 0;
         wbtcToken.transfer(yieldDistributor, _fee);
         emit DistributeWbtcYield(_fee, block.number);
@@ -584,7 +580,7 @@ contract HarvestRestructure is
         address recipient = IController(controller).rewards();
 
         uint256 _fee = cvxCrvToGovernanceAccum;
-        require(_fee > 0, "NO_ACCUM_CVXCRV");
+        require(_fee > 0, "0!");
         cvxCrvToGovernanceAccum = 0;
         cvxCrvHelperVault.depositFor(recipient, _fee);
 
@@ -597,7 +593,7 @@ contract HarvestRestructure is
         );
 
         _fee = cvxToGovernanceAccum;
-        require(_fee > 0, "NO_ACCUM_CVX");
+        require(_fee > 0, "0!");
         cvxToGovernanceAccum = 0;
         cvxHelperVault.depositFor(recipient, _fee);
 
@@ -613,10 +609,7 @@ contract HarvestRestructure is
     /// ===== Permissioned Actions: Governance =====
     function setibBTCRetentionBps(uint256 _ibBTCRetentionBps) external {
         _onlyGovernance();
-        require(
-            ibBTCRetentionBps <= MAX_FEE,
-            "excessive-governance-ibBTC-retention-bps"
-        );
+        require(ibBTCRetentionBps <= MAX_FEE, ">MAX_FEE");
         ibBTCRetentionBps = _ibBTCRetentionBps;
     }
 
@@ -632,7 +625,7 @@ contract HarvestRestructure is
 
     function setPid(uint256 _pid) external {
         _onlyGovernance();
-        pid = _pid; // LP token pool ID
+        pid = _pid;
     }
 
     function setThresholdThreeCrv(uint256 _thresholdThreeCrv) external {

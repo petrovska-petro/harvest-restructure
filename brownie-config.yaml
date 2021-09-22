@@ -10,6 +10,9 @@ autofetch_sources: true
 compiler:
   solc:
     version: 0.6.12
+    optimizer:
+      enabled: true
+      runs: 200
     remappings:
       - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@3.4.0"
       - "@openzeppelin-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@3.4.2"

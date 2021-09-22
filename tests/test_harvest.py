@@ -8,20 +8,14 @@ def test_harvest(strategy, governance, whale_crv, whale_cvx, whale_cvxcrv):
 
     tx = strategy.harvest({"from": governance})
 
-    events = tx.events
+    print(f"wbtcTokenYieldAccum={strategy.wbtcTokenYieldAccum()}")
 
-    perf_fee = strategy.performanceFeeGovernance() / strategy.MAX_FEE()
-    """
-    assert (
-        approx(strategy.cvxToGovernanceAccum())
-        == events["HarvestCustom"]["cvxHarvested"] * perf_fee
-    )
-    assert (
-        approx(strategy.cvxCrvToGovernanceAccum())
-        == events["HarvestCustom"]["cvxCrvHarvested"] * perf_fee
-    )
+    events = tx.events
+    
+    assert strategy.cvxToGovernanceAccum() > 0
+    assert strategy.cvxCrvToGovernanceAccum() > 0
     assert strategy.wbtcTokenYieldAccum() > 0
-    """
+    assert events['Harvest']['harvested'] > 0
 
 
 # this just to get the high range on the gas profiling as it will add 2 tx extras
