@@ -72,6 +72,7 @@ contract HarvestRestructure is
     uint256 public autoCompoundingBps = 2000;
     uint256 public ibBTCRetentionBps = 6000;
     uint256 public treeBps = 6000;
+    uint256 public metaPoolIndex = 2;
 
     // ===== accum variables =====
     uint256 public wbtcTokenYieldAccum;
@@ -114,7 +115,6 @@ contract HarvestRestructure is
 
     uint256 public constant MAX_UINT_256 = uint256(-1);
     uint256 public constant WBTC_INDEX_OUTPUT = 2;
-    uint256 public constant metaPoolIndex = 2;
 
     uint256 public pid;
     address public badgerTree;
@@ -174,19 +174,12 @@ contract HarvestRestructure is
             _curvePool.numElements
         );
 
-        // Set Swap Paths - fix some that are suffering
+        // Set Swap Paths
         address[] memory path = new address[](3);
         path[0] = usdc;
         path[1] = weth;
         path[2] = crv;
         _setTokenSwapPath(usdc, crv, path);
-
-        path = new address[](4);
-        path[0] = cvxCrv;
-        path[1] = crv;
-        path[2] = weth;
-        path[3] = wbtc;
-        _setTokenSwapPath(cvxCrv, wbtc, path);
 
         path = new address[](3);
         path[0] = crv;
@@ -631,5 +624,10 @@ contract HarvestRestructure is
     function setThresholdThreeCrv(uint256 _thresholdThreeCrv) external {
         _onlyGovernance();
         thresholdThreeCrv = _thresholdThreeCrv;
+    }
+
+    function setMetaPoolIndex(uint256 _metaPoolIndex) external {
+        _onlyGovernance();
+        metaPoolIndex = _metaPoolIndex;
     }
 }
