@@ -11,10 +11,10 @@ Gas profilling:
 
 ```
 HarvestRestructure <Contract>
-   ├─ constructor           -  avg: 5400554  avg (confirmed): 5400554  low: 5400554  high: 5400554
-   ├─ harvest               -  avg: 1529034  avg (confirmed): 1529034  low: 1498806  high: 1559263
-   ├─ initiliazed           -  avg:  984439  avg (confirmed):  984439  low:  984439  high:  984439
-   └─ tend                  -  avg:  367088  avg (confirmed):  367088  low:  318932  high:  415244
+   ├─ constructor           -  avg: 5395404  avg (confirmed): 5395404  low: 5395404  high: 5395404
+   ├─ harvest               -  avg: 1561230  avg (confirmed): 1561230  low: 1527720  high: 1594740
+   ├─ initiliazed           -  avg:  875540  avg (confirmed):  875540  low:  875540  high:  875540
+   └─ tend                  -  avg:  368742  avg (confirmed):  368742  low:  315186  high:  422298
 ISettV4 <Contract>
    └─ approveContractAccess -  avg:   46281  avg (confirmed):   46281  low:   46281  high:   46281
 ```
@@ -22,10 +22,10 @@ ISettV4 <Contract>
 Looking at some of the current ones which could use this harvest restructure are hovering around 1.8m of gas used. Then, say after 10 harvest executed at 63.88gwei using the new structure could represent savings on ETH burning rates:
 
 - 10 * 1800000 * 0.000000063882838667 = 1.149 ETH (OLD)
-- 10 * 1498806 * 0.000000063882838667 = 0.957 ETH (no 3crv swap)
-- 10 * 1559263 * 0.000000063882838667 = 0.996 ETH (with 3crv swap)
+- 10 * 1527720 * 0.000000063882838667 = 0.975 ETH (no 3crv swap)
+- 10 * 1594740 * 0.000000063882838667 = 1.018 ETH (with 3crv swap)
 
-At current ETH=3600USD, will represent in 10 harvest a saving of $691 on avg gas profilling and $550 while swapping thru 3CRV for all of the 10 harversts.
+At current ETH=3600USD, will represent in 10 harvest a saving of $626 on avg gas profilling and $471 while swapping thru 3CRV for all of the 10 harversts.
 
 Harvest trace sample:
 
