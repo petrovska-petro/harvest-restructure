@@ -120,6 +120,7 @@ contract HarvestRestructure is
 
     uint256 public constant MAX_UINT_256 = uint256(-1);
     uint256 public constant WBTC_INDEX_OUTPUT = 3;
+    uint256 public constant metaPoolIndex = 2;
 
     uint256 public pid;
     address public badgerTree;
@@ -180,12 +181,11 @@ contract HarvestRestructure is
         );
 
         // Set Swap Paths - fix some that are suffering
-        address[] memory path = new address[](4);
+        address[] memory path = new address[](3);
         path[0] = usdc;
         path[1] = weth;
         path[2] = crv;
-        path[3] = cvxCrv;
-        _setTokenSwapPath(usdc, cvxCrv, path);
+        _setTokenSwapPath(usdc, crv, path);
 
         path = new address[](4);
         path[0] = cvxCrv;
@@ -193,6 +193,12 @@ contract HarvestRestructure is
         path[2] = weth;
         path[3] = wbtc;
         _setTokenSwapPath(cvxCrv, wbtc, path);
+
+        path = new address[](3);
+        path[0] = crv;
+        path[1] = weth;
+        path[2] = wbtc;
+        _setTokenSwapPath(crv, wbtc, path);
 
         path = new address[](3);
         path[0] = cvx;
@@ -308,12 +314,7 @@ contract HarvestRestructure is
 
         // 2. Convert CRV -> cvxCRV
         if (tendData.crvTended > 0) {
-            _swapExactTokensForTokens(
-                sushiswap,
-                crv,
-                tendData.crvTended,
-                getTokenSwapPath(crv, cvxCrv)
-            );
+            _exchange(crv, cvxCrv, metaPoolIndex, tendData.crvTended);
         }
 
         // Track harvested + converted coins
@@ -363,12 +364,18 @@ contract HarvestRestructure is
                 sushiswap,
                 usdc,
                 usdcToken.balanceOf(address(this)),
-                getTokenSwapPath(usdc, cvxCrv)
+                getTokenSwapPath(usdc, crv)
+            );
+            _exchange(
+                crv,
+                cvxCrv,
+                metaPoolIndex,
+                crvToken.balanceOf(address(this))
             );
             // note: here we get a bit extra of cvxCrv perhaps worthy to update `harvestData.cvxCrvHarvested`
             harvestData.cvxCrvHarvested = cvxCrvToken.balanceOf(address(this));
         }
-        
+
         uint256 _wbtcBefore = wbtcToken.balanceOf(address(this));
 
         // 3. Sell 20% of partner tokens for wbtc
@@ -377,11 +384,12 @@ contract HarvestRestructure is
                 .cvxCrvHarvested
                 .mul(autoCompoundingBps)
                 .div(MAX_FEE);
+            _exchange(cvxCrv, crv, metaPoolIndex, cvxCrvToSell);
             _swapExactTokensForTokens(
                 sushiswap,
-                cvxCrv,
-                cvxCrvToSell,
-                getTokenSwapPath(cvxCrv, wbtc)
+                crv,
+                crvToken.balanceOf(address(this)),
+                getTokenSwapPath(crv, wbtc)
             );
         }
 
@@ -399,7 +407,9 @@ contract HarvestRestructure is
         }
 
         // 4. check value of wbtc and divide between yield distributor and autocompound
-        uint256 wbtcEarned = wbtcToken.balanceOf(address(this)).sub(_wbtcBefore);
+        uint256 wbtcEarned = wbtcToken.balanceOf(address(this)).sub(
+            _wbtcBefore
+        );
 
         if (wbtcEarned > 0) {
             // 4.1 find out amount to be sent to yield-distributor and accumulate
