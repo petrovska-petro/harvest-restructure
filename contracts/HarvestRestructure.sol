@@ -329,7 +329,7 @@ contract HarvestRestructure is
         return tendData;
     }
 
-    function harvest() external returns (uint256 harvested) {
+    function harvest() external whenNotPaused returns (uint256 harvested) {
         HarvestData memory harvestData;
 
         uint256 totalWantBefore = balanceOf();
@@ -501,11 +501,9 @@ contract HarvestRestructure is
             );
         }
 
-        uint256 earned = balanceOf().sub(totalWantBefore);
+        harvested = balanceOf().sub(totalWantBefore);
 
-        emit Harvest(earned, block.number);
-
-        return earned;
+        emit Harvest(harvested, block.number);
     }
 
     /**
