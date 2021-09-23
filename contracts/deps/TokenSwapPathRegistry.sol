@@ -1,13 +1,5 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.6.11;
-
-import "@openzeppelin-upgradeable/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/math/SafeMathUpgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/utils/AddressUpgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/utils/PausableUpgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/token/ERC20/SafeERC20Upgradeable.sol";
-import "interfaces/curve/ICurveFi.sol";
 
 /*
     Expands swapping functionality over base strategy
