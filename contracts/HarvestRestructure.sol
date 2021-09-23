@@ -4,12 +4,15 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin-upgradeable/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/token/ERC20/SafeERC20Upgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/utils/EnumerableSetUpgradeable.sol";
 
 import "interfaces/badger/ISettV4.sol";
 import "interfaces/convex/IBaseRewardsPool.sol";
 import "interfaces/convex/ICvxRewardsPool.sol";
 import "interfaces/convex/IBaseRewardsPool.sol";
 import "interfaces/convex/IBooster.sol";
+import "interfaces/convex/CrvDepositor.sol";
+import "interfaces/sushi/ISushiChef.sol";
 
 import "./deps/BaseStrategy.sol";
 import "./deps/CurveSwapper.sol";
@@ -22,6 +25,8 @@ contract HarvestRestructure is
     UniswapSwapper,
     TokenSwapPathRegistry
 {
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
+
     // ===== Token Registry =====
     address public constant wbtc = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -46,15 +51,26 @@ contract HarvestRestructure is
         IERC20Upgradeable(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
 
     // ===== Convex Registry =====
-    IBaseRewardsPool public baseRewardsPool;
+    CrvDepositor public constant crvDepositor =
+        CrvDepositor(0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae); // Convert CRV -> cvxCRV
     IBooster public constant booster =
         IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    address public constant cvxCRV_CRV_SLP =
+        0x33F6DDAEa2a8a54062E021873bCaEE006CdF4007; // cvxCRV/CRV SLP
+    address public constant CVX_ETH_SLP =
+        0x05767d9EF41dC40689678fFca0608878fb3dE906; // CVX/ETH SLP
+    IBaseRewardsPool public baseRewardsPool;
     IBaseRewardsPool public constant cvxCrvRewardsPool =
         IBaseRewardsPool(0x3Fe65692bfCD0e6CF84cB1E7d24108E434A7587e);
     ICvxRewardsPool public constant cvxRewardsPool =
         ICvxRewardsPool(0xCF50b810E57Ac33B91dCF525C6ddd9881B139332);
+    ISushiChef public constant convexMasterChef =
+        ISushiChef(0x5F465e9fcfFc217c5849906216581a657cd60605);
     address public constant threeCrvSwap =
         0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+
+    uint256 public constant cvxCRV_CRV_SLP_Pid = 0;
+    uint256 public constant CVX_ETH_SLP_Pid = 1;
 
     uint256 public constant MAX_UINT_256 = uint256(-1);
 
@@ -63,15 +79,29 @@ contract HarvestRestructure is
     ISettV4 public cvxHelperVault;
     ISettV4 public cvxCrvHelperVault;
 
+    struct RewardTokenConfig {
+        uint256 autoCompoundingBps;
+        uint256 autoCompoundingPerfFee;
+        uint256 treeDistributionPerfFee;
+        address tendConvertTo;
+        uint256 tendConvertBps;
+    }
+
     struct CurvePoolConfig {
         address swap;
         uint256 wbtcPosition;
         uint256 numElements;
     }
 
+    EnumerableSetUpgradeable.AddressSet internal extraRewards; // Tokens other than CVX and cvxCRV to process as rewards
+    mapping(address => RewardTokenConfig) public rewardsTokenConfig;
     CurvePoolConfig public curvePool;
-    
+
     uint256 public autoCompoundingBps;
+    uint256 public autoCompoundingPerformanceFeeGovernance;
+
+    uint256 public constant AUTO_COMPOUNDING_BPS = 2000;
+    uint256 public constant AUTO_COMPOUNDING_PERFORMANCE_FEE = 5000; // Proportion of auto-compounded rewards taken as fee
 
     // ===== additional addresses to support BIP-68 =====
     address public yieldDistributor;
