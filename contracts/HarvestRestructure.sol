@@ -22,63 +22,6 @@ contract HarvestRestructure is
     UniswapSwapper,
     TokenSwapPathRegistry
 {
-    event WithdrawState(
-        uint256 toWithdraw,
-        uint256 preWant,
-        uint256 postWant,
-        uint256 withdrawn
-    );
-
-    event TreeDistribution(
-        address indexed token,
-        uint256 amount,
-        uint256 indexed blockNumber,
-        uint256 timestamp
-    );
-
-    event TendState(uint256 crvTended, uint256 cvxTended, uint256 cvxCrvTended);
-
-    event PerformanceFeeGovernance(
-        address indexed destination,
-        address indexed token,
-        uint256 amount,
-        uint256 indexed blockNumber,
-        uint256 timestamp
-    );
-
-    event DistributeWbtcYield(uint256 amount, uint256 indexed blockNumber);
-
-    struct HarvestData {
-        uint256 cvxCrvHarvested;
-        uint256 cvxHarvested;
-    }
-
-    struct TendData {
-        uint256 crvTended;
-        uint256 cvxTended;
-        uint256 cvxCrvTended;
-    }
-
-    struct CurvePoolConfig {
-        address swap;
-        uint256 wbtcPosition;
-        uint256 numElements;
-    }
-
-    // ===== threshold params for swaps =====
-    uint256 public thresholdThreeCrv = 200 ether;
-
-    // ===== strategy params =====
-    uint256 public autoCompoundingBps = 2000;
-    uint256 public ibBTCRetentionBps = 6000;
-    uint256 public treeBps = 6000;
-    uint256 public metaPoolIndex = 2;
-
-    // ===== accum variables =====
-    uint256 public wbtcTokenYieldAccum;
-    uint256 public cvxCrvToGovernanceAccum;
-    uint256 public cvxToGovernanceAccum;
-
     // ===== Token Registry =====
     address public constant wbtc = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -114,16 +57,76 @@ contract HarvestRestructure is
         0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
 
     uint256 public constant MAX_UINT_256 = uint256(-1);
-    uint256 public constant WBTC_INDEX_OUTPUT = 2;
 
     uint256 public pid;
     address public badgerTree;
+    ISettV4 public cvxHelperVault;
+    ISettV4 public cvxCrvHelperVault;
+
+    struct CurvePoolConfig {
+        address swap;
+        uint256 wbtcPosition;
+        uint256 numElements;
+    }
+
+    CurvePoolConfig public curvePool;
+    
+    uint256 public autoCompoundingBps;
+
+    // ===== additional addresses to support BIP-68 =====
     address public yieldDistributor;
     address public bTokenAddress;
     address public badgerSettPeak;
-    ISettV4 public cvxHelperVault;
-    ISettV4 public cvxCrvHelperVault;
-    CurvePoolConfig public curvePool;
+
+    // ===== threshold params for swaps =====
+    uint256 public thresholdThreeCrv = 200 ether;
+
+    // ===== strategy params =====
+    uint256 public constant WBTC_INDEX_OUTPUT = 2;
+    uint256 public ibBTCRetentionBps = 6000;
+    uint256 public treeBps = 6000;
+    uint256 public metaPoolIndex = 2;
+
+    // ===== accum variables =====
+    uint256 public wbtcTokenYieldAccum;
+    uint256 public cvxCrvToGovernanceAccum;
+    uint256 public cvxToGovernanceAccum;
+
+    event TreeDistribution(
+        address indexed token,
+        uint256 amount,
+        uint256 indexed blockNumber,
+        uint256 timestamp
+    );
+
+    event PerformanceFeeGovernance(
+        address indexed destination,
+        address indexed token,
+        uint256 amount,
+        uint256 indexed blockNumber,
+        uint256 timestamp
+    );
+
+    event WithdrawState(
+        uint256 toWithdraw,
+        uint256 preWant,
+        uint256 postWant,
+        uint256 withdrawn
+    );
+
+    struct HarvestData {
+        uint256 cvxCrvHarvested;
+        uint256 cvxHarvested;
+    }
+
+    struct TendData {
+        uint256 crvTended;
+        uint256 cvxTended;
+        uint256 cvxCrvTended;
+    }
+
+    event TendState(uint256 crvTended, uint256 cvxTended, uint256 cvxCrvTended);
+    event DistributeWbtcYield(uint256 amount, uint256 indexed blockNumber);
 
     function initiliazed(
         address _governance,
@@ -194,6 +197,7 @@ contract HarvestRestructure is
         _setTokenSwapPath(cvx, wbtc, path);
 
         _initializeApprovals();
+        autoCompoundingBps = 2000;
     }
 
     /// ===== View Functions =====
