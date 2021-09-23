@@ -8,10 +8,7 @@ import "@openzeppelin-upgradeable/contracts/math/MathUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/utils/AddressUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/token/ERC20/SafeERC20Upgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/proxy/Initializable.sol";
-import "interfaces/uniswap/IUniswapRouterV2.sol";
 import "interfaces/badger/IController.sol";
-import "interfaces/badger/IStrategy.sol";
 
 import "./SettAccessControl.sol";
 
