@@ -55,10 +55,6 @@ contract HarvestRestructure is
         CrvDepositor(0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae); // Convert CRV -> cvxCRV
     IBooster public constant booster =
         IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    address public constant cvxCRV_CRV_SLP =
-        0x33F6DDAEa2a8a54062E021873bCaEE006CdF4007; // cvxCRV/CRV SLP
-    address public constant CVX_ETH_SLP =
-        0x05767d9EF41dC40689678fFca0608878fb3dE906; // CVX/ETH SLP
     IBaseRewardsPool public baseRewardsPool;
     IBaseRewardsPool public constant cvxCrvRewardsPool =
         IBaseRewardsPool(0x3Fe65692bfCD0e6CF84cB1E7d24108E434A7587e);
@@ -68,9 +64,6 @@ contract HarvestRestructure is
         ISushiChef(0x5F465e9fcfFc217c5849906216581a657cd60605);
     address public constant threeCrvSwap =
         0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
-
-    uint256 public constant cvxCRV_CRV_SLP_Pid = 0;
-    uint256 public constant CVX_ETH_SLP_Pid = 1;
 
     uint256 public constant MAX_UINT_256 = uint256(-1);
 
@@ -99,9 +92,6 @@ contract HarvestRestructure is
 
     uint256 public autoCompoundingBps;
     uint256 public autoCompoundingPerformanceFeeGovernance;
-
-    uint256 public constant AUTO_COMPOUNDING_BPS = 2000;
-    uint256 public constant AUTO_COMPOUNDING_PERFORMANCE_FEE = 5000; // Proportion of auto-compounded rewards taken as fee
 
     // ===== additional addresses to support BIP-68 =====
     address public yieldDistributor;
