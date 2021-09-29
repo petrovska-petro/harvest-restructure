@@ -306,6 +306,21 @@ contract HarvestRestructure is
         }
     }
 
+    function patchPaths() external {
+        _onlyGovernance();
+        address[] memory path = new address[](3);
+        path[0] = usdc;
+        path[1] = weth;
+        path[2] = crv;
+        _setTokenSwapPath(usdc, crv, path);
+
+        path = new address[](3);
+        path[0] = crv;
+        path[1] = weth;
+        path[2] = wbtc;
+        _setTokenSwapPath(crv, wbtc, path);
+    }
+
     /// @notice The more frequent the tend, the higher returns will be
     function tend() external whenNotPaused returns (TendData memory tendData) {
         _onlyAuthorizedActors();
