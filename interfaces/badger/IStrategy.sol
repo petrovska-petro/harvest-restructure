@@ -39,4 +39,15 @@ interface IStrategy {
     function tend() external;
 
     function harvest() external;
+
+    // include BIP-68 support
+    function bTokenAddress() external view returns (address);
+
+    function badgerSettPeak() external view returns (address);
+
+    function autoCompoundingBps() external view returns (uint256);
+
+    function ibBTCHarvestShareBps() external view returns (uint256);
+
+    function ibBTCRetentionBps() external view returns (uint256);
 }

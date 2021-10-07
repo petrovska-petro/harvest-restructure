@@ -7,6 +7,7 @@ import "@openzeppelin-upgradeable/contracts/token/ERC20/SafeERC20Upgradeable.sol
 import "@openzeppelin-upgradeable/contracts/utils/EnumerableSetUpgradeable.sol";
 
 import "interfaces/badger/ISettV4.sol";
+import "interfaces/badger/IibBTCV1Helper.sol";
 import "interfaces/convex/IBaseRewardsPool.sol";
 import "interfaces/convex/ICvxRewardsPool.sol";
 import "interfaces/convex/IBaseRewardsPool.sol";
@@ -18,6 +19,8 @@ import "./deps/BaseStrategy.sol";
 import "./deps/CurveSwapper.sol";
 import "./deps/UniswapSwapper.sol";
 import "./deps/TokenSwapPathRegistry.sol";
+
+import "./helper/ibBTCV1Helper.sol";
 
 contract HarvestRestructure is
     BaseStrategy,
@@ -97,18 +100,17 @@ contract HarvestRestructure is
     address public yieldDistributor;
     address public bTokenAddress;
     address public badgerSettPeak;
+    IibBTCV1Helper public ibBTCV1Helper;
 
     // ===== threshold params for swaps =====
     uint256 public thresholdThreeCrv = 200 ether;
 
     // ===== strategy params =====
-    uint256 public constant WBTC_INDEX_OUTPUT = 2;
     uint256 public ibBTCRetentionBps = 6000;
-    uint256 public treeBps = 6000;
     uint256 public metaPoolIndex = 2;
 
     // ===== accum variables =====
-    uint256 public wbtcTokenYieldAccum;
+    uint256 public pendingWbtcAccumForPpfsZapper;
     uint256 public cvxCrvToGovernanceAccum;
     uint256 public cvxToGovernanceAccum;
 
@@ -148,13 +150,13 @@ contract HarvestRestructure is
     event TendState(uint256 crvTended, uint256 cvxTended, uint256 cvxCrvTended);
     event DistributeWbtcYield(uint256 amount, uint256 indexed blockNumber);
 
-    function initiliazed(
+    function initialize(
         address _governance,
         address _strategist,
         address _controller,
         address _keeper,
         address _guardian,
-        address[7] memory _wantConfig,
+        address[4] memory _wantConfig,
         uint256 _pid,
         uint256[3] memory _feeConfig,
         CurvePoolConfig memory _curvePool
@@ -172,10 +174,6 @@ contract HarvestRestructure is
 
         cvxHelperVault = ISettV4(_wantConfig[2]);
         cvxCrvHelperVault = ISettV4(_wantConfig[3]);
-
-        yieldDistributor = _wantConfig[4];
-        badgerSettPeak = _wantConfig[5];
-        bTokenAddress = _wantConfig[6];
 
         pid = _pid;
 
@@ -292,6 +290,10 @@ contract HarvestRestructure is
         return protectedTokens;
     }
 
+    function isTendable() public view override returns (bool) {
+        return true;
+    }
+
     function _tendGainsFromPositions() internal {
         // Harvest CRV, CVX, cvxCRV, 3CRV, and extra rewards tokens from staking positions
         // Note: Always claim extras
@@ -321,6 +323,19 @@ contract HarvestRestructure is
         _setTokenSwapPath(crv, wbtc, path);
     }
 
+    function setConfigibBTCAddresses(
+        address _yieldDistributor,
+        address _badgerSettPeak,
+        address _bTokenAddress,
+        address _ibBTCV1Helper
+    ) external {
+        _onlyGovernance();
+        yieldDistributor = _yieldDistributor;
+        badgerSettPeak = _badgerSettPeak;
+        bTokenAddress = _bTokenAddress;
+        ibBTCV1Helper = IibBTCV1Helper(_ibBTCV1Helper);
+    }
+
     /// @notice The more frequent the tend, the higher returns will be
     function tend() external whenNotPaused returns (TendData memory tendData) {
         _onlyAuthorizedActors();
@@ -337,8 +352,12 @@ contract HarvestRestructure is
         }
 
         // Track harvested + converted coins
-        tendData.cvxCrvTended = cvxCrvToken.balanceOf(address(this));
-        tendData.cvxTended = cvxToken.balanceOf(address(this));
+        tendData.cvxCrvTended = cvxCrvToken.balanceOf(address(this)).sub(
+            cvxCrvToGovernanceAccum
+        );
+        tendData.cvxTended = cvxToken.balanceOf(address(this)).sub(
+            cvxToGovernanceAccum
+        );
 
         // 3. Stake all cvxCRV
         if (tendData.cvxCrvTended > 0) {
@@ -358,6 +377,7 @@ contract HarvestRestructure is
     }
 
     function harvest() external returns (uint256 harvested) {
+        _onlyAuthorizedActors();
         HarvestData memory harvestData;
 
         uint256 totalWantBefore = balanceOf();
@@ -370,8 +390,12 @@ contract HarvestRestructure is
         );
         cvxRewardsPool.withdraw(cvxRewardsPool.balanceOf(address(this)), true);
 
-        harvestData.cvxCrvHarvested = cvxCrvToken.balanceOf(address(this));
-        harvestData.cvxHarvested = cvxToken.balanceOf(address(this));
+        harvestData.cvxCrvHarvested = cvxCrvToken.balanceOf(address(this)).sub(
+            cvxCrvToGovernanceAccum
+        );
+        harvestData.cvxHarvested = cvxToken.balanceOf(address(this)).sub(
+            cvxToGovernanceAccum
+        );
 
         // 2. convert 3CRV to USDC and USDC to cvxCRV, only if amount is above treshold due to the tx costs
         uint256 threeCrvBalance = threeCrvToken.balanceOf(address(this));
@@ -390,10 +414,12 @@ contract HarvestRestructure is
                 crvToken.balanceOf(address(this))
             );
             // note: here we get a bit extra of cvxCrv perhaps worthy to update `harvestData.cvxCrvHarvested`
-            harvestData.cvxCrvHarvested = cvxCrvToken.balanceOf(address(this));
+            harvestData.cvxCrvHarvested = cvxCrvToken
+                .balanceOf(address(this))
+                .sub(cvxCrvToGovernanceAccum);
         }
 
-        uint256 _wbtcBefore = wbtcToken.balanceOf(address(this));
+        uint256 wbtcBefore = wbtcToken.balanceOf(address(this));
 
         // 3. Sell 20% of partner tokens for wbtc
         if (harvestData.cvxCrvHarvested > 0) {
@@ -424,35 +450,46 @@ contract HarvestRestructure is
         }
 
         // 4. check value of wbtc and divide between yield distributor and autocompound
-        uint256 wbtcEarned = wbtcToken.balanceOf(address(this)).sub(
-            _wbtcBefore
-        );
+        uint256 wbtcEarned = wbtcToken.balanceOf(address(this)).sub(wbtcBefore);
 
         if (wbtcEarned > 0) {
             // 4.1 find out amount to be sent to yield-distributor and accumulate
-            uint256 wbtcToYieldDistr = _calcibBTCPortion(
+            uint256 wbtcToYieldDistr = ibBTCV1Helper.calcibBTCPortion(
                 harvestData.cvxCrvHarvested,
-                harvestData.cvxHarvested
+                harvestData.cvxHarvested,
+                wbtcEarned,
+                address(this),
+                getTokenSwapPath(crv, wbtc),
+                getTokenSwapPath(cvx, wbtc),
+                metaPoolIndex
             );
-            wbtcTokenYieldAccum = wbtcTokenYieldAccum.add(wbtcToYieldDistr);
-            // 4.2 the rest is autocompounded
+            pendingWbtcAccumForPpfsZapper = pendingWbtcAccumForPpfsZapper.add(
+                wbtcToYieldDistr
+            );
+            // 4.2 the rest is autocompounded if wbtcToYieldDistr < wbtcToCompound
             uint256 wbtcToCompound = wbtcEarned.sub(wbtcToYieldDistr);
-            _add_liquidity_single_coin(
-                curvePool.swap,
-                want,
-                wbtc,
-                wbtcToCompound,
-                curvePool.wbtcPosition,
-                curvePool.numElements,
-                0
-            );
-            uint256 wantToDeposited = IERC20Upgradeable(want).balanceOf(
-                address(this)
-            );
-            if (wantToDeposited > 0) {
+            if (wbtcToCompound > 0) {
+                _add_liquidity_single_coin(
+                    curvePool.swap,
+                    want,
+                    wbtc,
+                    wbtcToCompound,
+                    curvePool.wbtcPosition,
+                    curvePool.numElements,
+                    0
+                );
+                uint256 wantToDeposited = IERC20Upgradeable(want).balanceOf(
+                    address(this)
+                );
                 _deposit(wantToDeposited);
             }
         }
+
+        // calc on the fly only once MSTORE ~3gas
+        uint256 treeBps = MAX_FEE
+            .sub(autoCompoundingBps)
+            .sub(performanceFeeGovernance)
+            .sub(performanceFeeStrategist);
 
         // 5. Split the rest of partner tokens between the tree for depositors and DAO, DAO will accum and call at agreed freq or whenever needed
         if (harvestData.cvxCrvHarvested > 0) {
@@ -529,86 +566,29 @@ contract HarvestRestructure is
             );
         }
 
+        uint256 totalWantAfter = balanceOf();
+        require(totalWantAfter >= totalWantBefore, "<!");
+
         harvested = balanceOf().sub(totalWantBefore);
 
         emit Harvest(harvested, block.number);
-    }
-
-    /**
-     * @dev Calculates the amount of wbtc to deduct from the amount acquired from selling 20% of the partner tokens, accum in `wbtcTokenYieldAccum`
-     * @param _cvxCrvAmount harvested amount of CVXCRV on this round of harvest
-     * @param _cvxAmount harvested amount of CVX on this round of harvest
-     **/
-    function _calcibBTCPortion(uint256 _cvxCrvAmount, uint256 _cvxAmount)
-        internal
-        returns (uint256 totalWbtc)
-    {
-        uint256 ibBTCHarvestShareBps = _getibBTCHarvestShare();
-
-        uint256 cvxToWbtc = _partnerTokenibBTCPortion(
-            _cvxAmount,
-            ibBTCHarvestShareBps
-        );
-        uint256 cvxCrvToWbtc = _partnerTokenibBTCPortion(
-            _cvxCrvAmount,
-            ibBTCHarvestShareBps
-        );
-
-        // get wbtc rates
-        uint256[] memory minOuts = IUniswapRouterV2(sushiswap).getAmountsOut(
-            _getDy(cvxCrv, crv, metaPoolIndex, cvxCrvToWbtc),
-            getTokenSwapPath(crv, wbtc)
-        );
-        // 3rd index is the wbtc amount estimation
-        totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT]);
-
-        minOuts = IUniswapRouterV2(sushiswap).getAmountsOut(
-            cvxToWbtc,
-            getTokenSwapPath(cvx, wbtc)
-        );
-        // it has one index less than cvxCrv -> wbtc
-        totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT]);
-    }
-
-    /// @dev Calculates the amount of partnet token, which will be used to be converted for WBTC
-    function _partnerTokenibBTCPortion(
-        uint256 _tokenAmount,
-        uint256 _ibBTCHarvestShareBps
-    ) internal returns (uint256) {
-        return
-            _tokenAmount
-                .mul(MAX_FEE.sub(autoCompoundingBps))
-                .div(MAX_FEE)
-                .mul(ibBTCRetentionBps)
-                .div(MAX_FEE)
-                .mul(_ibBTCHarvestShareBps)
-                .div(MAX_FEE);
-    }
-
-    /// @dev Calculates the % of harvest share comparing what is on the peak and the total supply of its appropiate bToken
-    function _getibBTCHarvestShare() internal returns (uint256) {
-        uint256 peakShare = IERC20Upgradeable(bTokenAddress).balanceOf(
-            badgerSettPeak
-        );
-        uint256 totalSupply = IERC20Upgradeable(bTokenAddress).totalSupply();
-
-        return
-            peakShare.mul(1 ether).div(totalSupply).mul(MAX_FEE).div(1 ether);
     }
 
     /// ===== Actions to transfers accumulated tokens =====
 
     /// @dev Gas saving: this method is strip out from harvest and called at whatever convenience
     function transferWbtcTokenYield() external {
-        uint256 _fee = wbtcTokenYieldAccum;
+        _onlyAuthorizedActors();
+        uint256 _fee = pendingWbtcAccumForPpfsZapper;
         require(_fee > 0, "0!");
-        wbtcTokenYieldAccum = 0;
+        pendingWbtcAccumForPpfsZapper = 0;
         wbtcToken.transfer(yieldDistributor, _fee);
         emit DistributeWbtcYield(_fee, block.number);
     }
 
     /// @dev Gas saving: this method is strip out from harvest to allow accum a lump sum for later tx to dev_multi
     function collectPerformanceFees() external {
+        _onlyAuthorizedActors();
         address recipient = IController(controller).rewards();
 
         uint256 _fee = cvxCrvToGovernanceAccum;
@@ -641,18 +621,12 @@ contract HarvestRestructure is
     /// ===== Permissioned Actions: Governance =====
     function setibBTCRetentionBps(uint256 _ibBTCRetentionBps) external {
         _onlyGovernance();
-        require(ibBTCRetentionBps <= MAX_FEE, ">MAX_FEE");
         ibBTCRetentionBps = _ibBTCRetentionBps;
     }
 
     function setAutoCompoundingBps(uint256 _bps) external {
         _onlyGovernance();
         autoCompoundingBps = _bps;
-    }
-
-    function setTreeBps(uint256 _treeBps) external {
-        _onlyGovernance();
-        treeBps = _treeBps;
     }
 
     function setPid(uint256 _pid) external {
