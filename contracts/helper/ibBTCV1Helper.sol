@@ -10,7 +10,7 @@ import "../deps/UniswapSwapper.sol";
 
 import "interfaces/badger/IStrategy.sol";
 
-// library containing some math for ibBTC harvest restructuring due to EIP-170
+// Contains some math for ibBTC harvest restructuring due to EIP-170
 contract ibBTCV1Helper is CurveSwapper, UniswapSwapper {
     using SafeMathUpgradeable for uint256;
 
