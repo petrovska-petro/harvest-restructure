@@ -348,7 +348,7 @@ contract HarvestRestructure is
 
         // 2. Convert CRV -> cvxCRV
         if (tendData.crvTended > 0) {
-            _exchange(crv, cvxCrv, metaPoolIndex, tendData.crvTended);
+            _exchange(crv, cvxCrv, metaPoolIndex, tendData.crvTended, true);
         }
 
         // Track harvested + converted coins
@@ -411,7 +411,8 @@ contract HarvestRestructure is
                 crv,
                 cvxCrv,
                 metaPoolIndex,
-                crvToken.balanceOf(address(this))
+                crvToken.balanceOf(address(this)),
+                true
             );
             // note: here we get a bit extra of cvxCrv perhaps worthy to update `harvestData.cvxCrvHarvested`
             harvestData.cvxCrvHarvested = cvxCrvToken
@@ -427,7 +428,7 @@ contract HarvestRestructure is
                 .cvxCrvHarvested
                 .mul(autoCompoundingBps)
                 .div(MAX_FEE);
-            _exchange(cvxCrv, crv, metaPoolIndex, cvxCrvToSell);
+            _exchange(cvxCrv, crv, metaPoolIndex, cvxCrvToSell, true);
             _swapExactTokensForTokens(
                 sushiswap,
                 crv,

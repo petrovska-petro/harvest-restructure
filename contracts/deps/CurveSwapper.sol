@@ -2,7 +2,6 @@
 
 pragma solidity ^0.6.11;
 
-
 import "interfaces/curve/ICurveFi.sol";
 import "interfaces/curve/ICurveExchange.sol";
 import "interfaces/curve/ICurveFactory.sol";
@@ -17,17 +16,19 @@ contract CurveSwapper is BaseSwapper {
     address public constant addressProvider =
         0x0000000022D53366457F9d5E68Ec105046FC4383;
 
+    uint256 public constant registryId = 0;
     uint256 public constant metaPoolFactoryId = 3;
 
     function _exchange(
         address _from,
         address _to,
+        uint256 _dx,
         uint256 _index,
-        uint256 _dx
+        bool _isFactoryPool
     ) internal {
-        address factoryAddress = ICurveRegistryAddressProvider(addressProvider)
-            .get_address(metaPoolFactoryId);
-        address poolAddress = ICurveFactory(factoryAddress).find_pool_for_coins(
+        address poolRegistry = ICurveRegistryAddressProvider(addressProvider)
+            .get_address(_isFactoryPool ? metaPoolFactoryId : registryId);
+        address poolAddress = ICurveFactory(poolRegistry).find_pool_for_coins(
             _from,
             _to,
             _index
@@ -35,7 +36,7 @@ contract CurveSwapper is BaseSwapper {
 
         if (poolAddress != address(0)) {
             _safeApproveHelper(_from, poolAddress, _dx);
-            (int128 i, int128 j, ) = ICurveFactory(factoryAddress)
+            (int128 i, int128 j, ) = ICurveFactory(poolRegistry)
                 .get_coin_indices(poolAddress, _from, _to);
             ICurveFi(poolAddress).exchange(i, j, _dx, 0);
         }
