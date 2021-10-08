@@ -13,11 +13,11 @@ def test_harvest(strategy, governance, whale_crv, whale_cvx, whale_cvxcrv):
     events = tx.events
 
     print(f" ==== Harvest event -> {events['Harvest']['harvested'] } ==== ")
-    
+
     assert strategy.cvxToGovernanceAccum() > 0
     assert strategy.cvxCrvToGovernanceAccum() > 0
     assert strategy.pendingWbtcAccumForPpfsZapper() > 0
-    assert events['Harvest']['harvested'] > 0
+    assert events["Harvest"]["harvested"] > 0
 
 
 # this just to get the high range on the gas profiling as it will add 2 tx extras

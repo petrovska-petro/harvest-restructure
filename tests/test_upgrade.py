@@ -4,38 +4,19 @@ from brownie import (
 )
 import pytest
 
-# strategies deploy dictionary
-strat_dictionary = {
-    "native.renCrv": "0x6582a5b139fc1c6360846efdc4440d51aad4df7b",
-    "native.sbtcCrv": "0xf1ded284e891943b3e9c657d7fc376b86164ffc2",
-    "native.tbtcCrv": "0x522bb024c339a12be1a47229546f288c40b62d29",
-}
-
-# This strats are affected by this update atm
-CRV_STRATS = ["native.renCrv", "native.sbtcCrv", "native.tbtcCrv"]
-
 # helper to update strategy logic in test
-def upgrade_strategy(devProxyAdmin, strategy_proxy, strategyLogic, governanceTimelock):
-    devProxyAdmin.upgrade(
+def upgrade_strategy(proxyAdmin, strategy_proxy, strategyLogic, governance):
+    proxyAdmin.upgrade(
         strategy_proxy,
         strategyLogic,
-        {"from": governanceTimelock},
+        {"from": governance},
     )
 
 
-def get_strategy(key):
-    return strat_dictionary[key]
-
-
-@pytest.mark.parametrize(
-    "strategy_key",
-    CRV_STRATS,
-)
-def test_upgraded_crv_strats_storage(
-    devProxyAdmin, strategy, governance_lock, strategy_key
-):
-    # as_proxy_for="0x01d10fdc6b484BE380144dF12EB6C75387EfC49B"
-    strategy_proxy = Contract.from_explorer(get_strategy(strategy_key))
+def test_upgraded_crv_strats_storage(strategy, proxyAdminTest, governance):
+    strategy_proxy = proxyAdminTest[0]
+    proxy_admin = proxyAdminTest[1]
+    proxy_strat_address = proxyAdminTest[2]
 
     with pytest.raises(AttributeError):
         strategy_proxy.metaPoolIndex()
@@ -55,32 +36,30 @@ def test_upgraded_crv_strats_storage(
         strategy_proxy.autoCompoundingPerformanceFeeGovernance()
     )
 
-    upgrade_strategy(
-        devProxyAdmin, strategy_proxy.address, strategy.address, governance_lock
+    proxy_strat_updated = Contract.from_abi(
+        "HarvestRestructure", proxy_strat_address, HarvestRestructure.abi
     )
+
+    upgrade_strategy(proxy_admin, proxy_strat_address, strategy, governance)
 
     print("\n ==== NOTE: Proxy logic has been upgraded! ==== ")
 
-    proxy_updated = Contract.from_abi(
-        "HarvestRestructure", strategy_proxy.address, HarvestRestructure.abi
-    )
-
     # Check that it's upgraded (metaPoolIndex, ibBTCRetentionBps, thresholdThreeCrv...)
-    assert proxy_updated.metaPoolIndex() == 2
-    assert strategy_proxy.ibBTCRetentionBps() == 6000
-    assert strategy_proxy.thresholdThreeCrv() == 250
+    assert proxy_strat_updated.metaPoolIndex() == 2
+    assert proxy_strat_updated.ibBTCRetentionBps() == 6000
+    assert proxy_strat_updated.thresholdThreeCrv() == 250
 
-    assert baseRewardsPool == strategy_proxy.baseRewardsPool()
-    assert pid == strategy_proxy.pid()
-    assert badgerTree == strategy_proxy.badgerTree()
-    assert cvxHelperVault == strategy_proxy.cvxHelperVault()
-    assert cvxCrvHelperVault == strategy_proxy.cvxCrvHelperVault()
-    assert curvePool == strategy_proxy.curvePool()
-    assert autoCompoundingBps == strategy_proxy.autoCompoundingBps()
+    assert baseRewardsPool == proxy_strat_updated.baseRewardsPool()
+    assert pid == proxy_strat_updated.pid()
+    assert badgerTree == proxy_strat_updated.badgerTree()
+    assert cvxHelperVault == proxy_strat_updated.cvxHelperVault()
+    assert cvxCrvHelperVault == proxy_strat_updated.cvxCrvHelperVault()
+    assert curvePool == proxy_strat_updated.curvePool()
+    assert autoCompoundingBps == proxy_strat_updated.autoCompoundingBps()
     assert (
         autoCompoundingPerformanceFeeGovernance
-        == strategy_proxy.autoCompoundingPerformanceFeeGovernance()
+        == proxy_strat_updated.autoCompoundingPerformanceFeeGovernance()
     )
     assert autoCompoundingPerformanceFeeGovernance == (
-        strategy_proxy.autoCompoundingPerformanceFeeGovernance()
+        proxy_strat_updated.autoCompoundingPerformanceFeeGovernance()
     )

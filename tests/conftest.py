@@ -1,5 +1,7 @@
-from brownie import Wei
+from brownie import Wei, Contract
 import pytest
+
+OPENZEPPELIN_CONTRACTS = "OpenZeppelin/openzeppelin-contracts@3.4.0"
 
 crvRenWBTC_address = "0x49849C98ae39Fff122806C06791Fa73784FB3675"
 tree_address = "0x660802Fc641b154aBA66a62137e71f331B6d787A"
@@ -91,6 +93,45 @@ def wbtc(interface):
 @pytest.fixture(scope="module")
 def devProxyAdmin(interface):
     yield interface.IDevProxyAdmin(DEV_PROXY_ADMIN)
+
+
+@pytest.fixture(scope="module")
+def proxyAdminTest(StrategyConvexStakingOptimizer, config_addresses, governance, pm):
+    OPENZEPPELIN = pm(OPENZEPPELIN_CONTRACTS)
+
+    old_strategy = governance.deploy(StrategyConvexStakingOptimizer)
+
+    want_config = [crvRenWBTC_address, tree_address, cvxHelperVault, cvxCrvHelperVault]
+    pid = 6
+    fee_config = [2000, 0, 50]
+    curve_pool = ["0x93054188d876f558f4a66B2EF1d97d16eDf0895B", 1, 2]
+
+    encode_input = old_strategy.initialize.encode_input(
+        config_addresses[0],
+        config_addresses[1],
+        config_addresses[2],
+        config_addresses[3],
+        config_addresses[4],
+        want_config,
+        pid,
+        fee_config,
+        curve_pool,
+    )
+
+    proxy_admin = governance.deploy(OPENZEPPELIN.ProxyAdmin)
+
+    proxy = governance.deploy(
+        OPENZEPPELIN.TransparentUpgradeableProxy,
+        old_strategy.address,
+        proxy_admin.address,
+        encode_input,
+    )
+
+    proxy_strat = Contract.from_abi(
+        "StrategyConvexStakingOptimizer", proxy.address, old_strategy.abi
+    )
+
+    yield proxy_strat, proxy_admin, proxy.address
 
 
 @pytest.fixture(scope="module")
