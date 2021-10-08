@@ -38,9 +38,14 @@ contract ibBTCV1Helper is CurveSwapper, UniswapSwapper {
     ) public returns (uint256 totalWbtc) {
         uint256 ibBTCHarvestShareBps = _getibBTCHarvestShare(_strategy);
 
-        uint256 cvxToWbtc = _partnerTokenibBTCPortion(_cvxAmount, _strategy);
+        uint256 cvxToWbtc = _partnerTokenibBTCPortion(
+            _cvxAmount,
+            ibBTCHarvestShareBps,
+            _strategy
+        );
         uint256 cvxCrvToWbtc = _partnerTokenibBTCPortion(
             _cvxCrvAmount,
+            ibBTCHarvestShareBps,
             _strategy
         );
 
@@ -60,7 +65,7 @@ contract ibBTCV1Helper is CurveSwapper, UniswapSwapper {
         // it has one index less than cvxCrv -> wbtc
         totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT]);
 
-        totalWbtc = MathUpgradeable.min(_maxWbtc, totalWbtc);
+        //totalWbtc = MathUpgradeable.min(_maxWbtc, totalWbtc);
     }
 
     /// @dev Calculates the % of harvest share comparing what is on the peak and the total supply of its appropiate bToken
@@ -80,15 +85,16 @@ contract ibBTCV1Helper is CurveSwapper, UniswapSwapper {
     }
 
     /// @dev Calculates the amount of partnet token, which will be used to be converted for WBTC
-    function _partnerTokenibBTCPortion(uint256 _tokenAmount, address _strategy)
-        internal
-        returns (uint256)
-    {
+    function _partnerTokenibBTCPortion(
+        uint256 _tokenAmount,
+        uint256 _ibBTCHarvestShareBps,
+        address _strategy
+    ) internal returns (uint256) {
         return
             _tokenAmount
                 .mul(MAX_FEE.sub(IStrategy(_strategy).autoCompoundingBps()))
                 .div(MAX_FEE)
-                .mul(IStrategy(_strategy).ibBTCHarvestShareBps())
+                .mul(_ibBTCHarvestShareBps)
                 .div(MAX_FEE)
                 .mul(IStrategy(_strategy).ibBTCRetentionBps())
                 .div(MAX_FEE);

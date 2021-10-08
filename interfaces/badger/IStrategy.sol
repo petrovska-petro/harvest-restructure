@@ -47,7 +47,5 @@ interface IStrategy {
 
     function autoCompoundingBps() external view returns (uint256);
 
-    function ibBTCHarvestShareBps() external view returns (uint256);
-
     function ibBTCRetentionBps() external view returns (uint256);
 }

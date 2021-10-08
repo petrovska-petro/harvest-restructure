@@ -7,6 +7,8 @@ On each harvest:
 - ibbtc contract gets the smaller of 20% of the total harvest or 60% of the value of the tokens going to ibBTC redeposited as BTC yield (tokens sold)
 - everything else distributed to vault depositors as normal
 
+Added `thresholdThreeCrv` to mitigate the action within that condition to make economical sense to the strategy and DAO. At the moment is set to 250, at current prices only the `remove_liquidity_one` action already its cost is hovering ~$50.
+
 Gas profilling:
 
 ```

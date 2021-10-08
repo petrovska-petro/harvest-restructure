@@ -103,7 +103,7 @@ contract HarvestRestructure is
     IibBTCV1Helper public ibBTCV1Helper;
 
     // ===== threshold params for swaps =====
-    uint256 public thresholdThreeCrv = 200 ether;
+    uint256 public thresholdThreeCrv = 250 ether;
 
     // ===== strategy params =====
     uint256 public ibBTCRetentionBps = 6000;

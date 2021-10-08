@@ -92,24 +92,23 @@ def bCVXCRV(interface):
 
 
 @pytest.fixture(scope="module")
-def strategy(HarvestRestructure, config_addresses, deployer, bCVX, bCVXCRV):
-    strategy = deployer.deploy(HarvestRestructure)
+def helper(ibBTCV1Helper, deployer):
+    helper = deployer.deploy(ibBTCV1Helper)
+    print(f" === ibBTCV1Helper address={helper.address} === ")
+    yield helper
 
+
+@pytest.fixture(scope="module")
+def strategy(HarvestRestructure, config_addresses, deployer, bCVX, bCVXCRV, helper):
+    strategy = deployer.deploy(HarvestRestructure)
+    print(f" === HarvestRestructure address={strategy.address} === ")
     # crvRenWBTC test
-    want_config = [
-        crvRenWBTC_address,
-        tree_address,
-        cvxHelperVault,
-        cvxCrvHelperVault,
-        yieldDistributor,
-        badgerSettPeak,
-        bTokenAddress,
-    ]
+    want_config = [crvRenWBTC_address, tree_address, cvxHelperVault, cvxCrvHelperVault]
     pid = 6
     fee_config = [2000, 0, 50]
     curve_pool = ["0x93054188d876f558f4a66B2EF1d97d16eDf0895B", 1, 2]
 
-    strategy.initiliazed(
+    strategy.initialize(
         config_addresses[0],
         config_addresses[1],
         config_addresses[2],
@@ -119,6 +118,17 @@ def strategy(HarvestRestructure, config_addresses, deployer, bCVX, bCVXCRV):
         pid,
         fee_config,
         curve_pool,
+    )
+
+    # call patches for swapping route
+    strategy.patchPaths({"from": config_addresses[0]})
+    # config for BIP-68
+    strategy.setConfigibBTCAddresses(
+        yieldDistributor,
+        badgerSettPeak,
+        bTokenAddress,
+        helper.address,
+        {"from": config_addresses[0]},
     )
 
     # whitelist strat for the deposits
@@ -156,7 +166,7 @@ def whale_cvxcrv(accounts, cvxcrv, strategy):
 def whale_three_crv(accounts, three_crv, strategy):
     threee_crv_amount = Wei("200 ether")
     whale_three_crv = accounts.at(
-        "0xA49b7ae3dB1A62E78245aa732E045dAc922eb183", force=True
+        "0x99459A327E2e1f7535501AFF6A1Aada7024C45FD", force=True
     )
     three_crv.transfer(strategy, threee_crv_amount, {"from": whale_three_crv})
     yield whale_three_crv

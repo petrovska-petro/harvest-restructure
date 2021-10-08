@@ -8,13 +8,15 @@ def test_harvest(strategy, governance, whale_crv, whale_cvx, whale_cvxcrv):
 
     tx = strategy.harvest({"from": governance})
 
-    print(f"wbtcTokenYieldAccum={strategy.wbtcTokenYieldAccum()}")
+    print(f"wbtcTokenYieldAccum={strategy.pendingWbtcAccumForPpfsZapper()}")
 
     events = tx.events
+
+    print(f" ==== Harvest event -> {events['Harvest']['harvested'] } ==== ")
     
     assert strategy.cvxToGovernanceAccum() > 0
     assert strategy.cvxCrvToGovernanceAccum() > 0
-    assert strategy.wbtcTokenYieldAccum() > 0
+    assert strategy.pendingWbtcAccumForPpfsZapper() > 0
     assert events['Harvest']['harvested'] > 0
 
 
