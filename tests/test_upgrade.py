@@ -1,7 +1,10 @@
-from brownie import Contract, reverts, StrategyConvexStakingOptimizer
+from brownie import (
+    Contract,
+    HarvestRestructure,
+)
 import pytest
 
-# strategt deploy dictionary
+# strategies deploy dictionary
 strat_dictionary = {
     "native.renCrv": "0x6582a5b139fc1c6360846efdc4440d51aad4df7b",
     "native.sbtcCrv": "0xf1ded284e891943b3e9c657d7fc376b86164ffc2",
@@ -12,10 +15,10 @@ strat_dictionary = {
 CRV_STRATS = ["native.renCrv", "native.sbtcCrv", "native.tbtcCrv"]
 
 # helper to update strategy logic in test
-def upgrade_strategy(devProxyAdmin, strategy_proxy, strategy, governanceTimelock):
+def upgrade_strategy(devProxyAdmin, strategy_proxy, strategyLogic, governanceTimelock):
     devProxyAdmin.upgrade(
         strategy_proxy,
-        strategy,
+        strategyLogic,
         {"from": governanceTimelock},
     )
 
@@ -31,10 +34,11 @@ def get_strategy(key):
 def test_upgraded_crv_strats_storage(
     devProxyAdmin, strategy, governance_lock, strategy_key
 ):
-    strategy_proxy = StrategyConvexStakingOptimizer.at(get_strategy(strategy_key))
+    # as_proxy_for="0x01d10fdc6b484BE380144dF12EB6C75387EfC49B"
+    strategy_proxy = Contract.from_explorer(get_strategy(strategy_key))
 
-    with reverts():
-        strategy_proxy.crvCvxCrvPoolIndex()
+    with pytest.raises(AttributeError):
+        strategy_proxy.metaPoolIndex()
 
     # TODO: There's probably a better way to do this
     baseRewardsPool = strategy_proxy.baseRewardsPool()
@@ -51,9 +55,18 @@ def test_upgraded_crv_strats_storage(
         strategy_proxy.autoCompoundingPerformanceFeeGovernance()
     )
 
-    upgrade_strategy(devProxyAdmin, strategy_proxy, strategy.address, governance_lock)
+    upgrade_strategy(
+        devProxyAdmin, strategy_proxy.address, strategy.address, governance_lock
+    )
 
-    # Check that it's upgraded (ibBTCRetentionBps, thresholdThreeCrv...)
+    print("\n ==== NOTE: Proxy logic has been upgraded! ==== ")
+
+    proxy_updated = Contract.from_abi(
+        "HarvestRestructure", strategy_proxy.address, HarvestRestructure.abi
+    )
+
+    # Check that it's upgraded (metaPoolIndex, ibBTCRetentionBps, thresholdThreeCrv...)
+    assert proxy_updated.metaPoolIndex() == 2
     assert strategy_proxy.ibBTCRetentionBps() == 6000
     assert strategy_proxy.thresholdThreeCrv() == 250
 
