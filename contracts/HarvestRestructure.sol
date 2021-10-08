@@ -376,7 +376,7 @@ contract HarvestRestructure is
         );
     }
 
-    function harvest() external returns (uint256 harvested) {
+    function harvest() external whenNotPaused returns (uint256 harvested) {
         _onlyAuthorizedActors();
         HarvestData memory harvestData;
 
