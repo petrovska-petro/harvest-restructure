@@ -64,8 +64,9 @@ contract ibBTCV1Helper is CurveSwapper, UniswapSwapper {
 
         // it has one index less than cvxCrv -> wbtc
         totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT]);
-
-        //totalWbtc = MathUpgradeable.min(_maxWbtc, totalWbtc);
+        
+        // prior to return check if it is over _maxWbtc
+        totalWbtc = MathUpgradeable.min(_maxWbtc, totalWbtc);
     }
 
     /// @dev Calculates the % of harvest share comparing what is on the peak and the total supply of its appropiate bToken
