@@ -16,7 +16,7 @@ def upgrade_strategy(proxyAdmin, strategy_proxy, strategyLogic, governance):
 def test_upgraded_crv_strats_storage(strategy, proxyAdminTest, governance):
     strategy_proxy = proxyAdminTest[0]
     proxy_admin = proxyAdminTest[1]
-    proxy_strat_address = proxyAdminTest[2]
+    proxy = proxyAdminTest[2]
 
     with pytest.raises(AttributeError):
         strategy_proxy.metaPoolIndex()
@@ -37,10 +37,10 @@ def test_upgraded_crv_strats_storage(strategy, proxyAdminTest, governance):
     )
 
     proxy_strat_updated = Contract.from_abi(
-        "HarvestRestructure", proxy_strat_address, HarvestRestructure.abi
+        "HarvestRestructure", proxy.address, HarvestRestructure.abi
     )
 
-    upgrade_strategy(proxy_admin, proxy_strat_address, strategy, governance)
+    upgrade_strategy(proxy_admin, proxy, strategy.address, governance)
 
     print("\n ==== NOTE: Proxy logic has been upgraded! ==== ")
 
@@ -48,7 +48,7 @@ def test_upgraded_crv_strats_storage(strategy, proxyAdminTest, governance):
     assert proxy_strat_updated.metaPoolIndex() == 2
     assert proxy_strat_updated.ibBTCRetentionBps() == 6000
     assert proxy_strat_updated.thresholdThreeCrv() == 250
-
+    
     assert baseRewardsPool == proxy_strat_updated.baseRewardsPool()
     assert pid == proxy_strat_updated.pid()
     assert badgerTree == proxy_strat_updated.badgerTree()

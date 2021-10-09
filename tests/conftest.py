@@ -131,7 +131,7 @@ def proxyAdminTest(StrategyConvexStakingOptimizer, config_addresses, governance,
         "StrategyConvexStakingOptimizer", proxy.address, old_strategy.abi
     )
 
-    yield proxy_strat, proxy_admin, proxy.address
+    yield proxy_strat, proxy_admin, proxy
 
 
 @pytest.fixture(scope="module")

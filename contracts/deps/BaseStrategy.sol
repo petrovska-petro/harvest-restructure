@@ -122,19 +122,19 @@ abstract contract BaseStrategy is PausableUpgradeable, SettAccessControl {
 
     function setWithdrawalFee(uint256 _withdrawalFee) external {
         _onlyGovernance();
-        require(_withdrawalFee <= MAX_FEE, "base-strategy/excessive-withdrawal-fee");
+        require(_withdrawalFee <= MAX_FEE, ">MAX_FEE!");
         withdrawalFee = _withdrawalFee;
     }
 
     function setPerformanceFeeStrategist(uint256 _performanceFeeStrategist) external {
         _onlyGovernance();
-        require(_performanceFeeStrategist <= MAX_FEE, "base-strategy/excessive-strategist-performance-fee");
+        require(_performanceFeeStrategist <= MAX_FEE, ">MAX_FEE!");
         performanceFeeStrategist = _performanceFeeStrategist;
     }
 
     function setPerformanceFeeGovernance(uint256 _performanceFeeGovernance) external {
         _onlyGovernance();
-        require(_performanceFeeGovernance <= MAX_FEE, "base-strategy/excessive-governance-performance-fee");
+        require(_performanceFeeGovernance <= MAX_FEE, ">MAX_FEE!");
         performanceFeeGovernance = _performanceFeeGovernance;
     }
 
@@ -145,7 +145,7 @@ abstract contract BaseStrategy is PausableUpgradeable, SettAccessControl {
 
     function setWithdrawalMaxDeviationThreshold(uint256 _threshold) external {
         _onlyGovernance();
-        require(_threshold <= MAX_FEE, "base-strategy/excessive-max-deviation-threshold");
+        require(_threshold <= MAX_FEE, "MAX_FEE!");
         withdrawalMaxDeviationThreshold = _threshold;
     }
 
