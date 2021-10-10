@@ -219,6 +219,10 @@ contract HarvestRestructure is
     }
 
     /// ===== View Functions =====
+    function version() external pure returns (string memory) {
+        return "1.2";
+    }
+
     function getName() external pure override returns (string memory) {
         return "StrategyConvexStakingOptimizer-Restructure";
     }

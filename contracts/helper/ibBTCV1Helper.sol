@@ -65,7 +65,7 @@ contract ibBTCV1Helper is CurveSwapper, UniswapSwapper {
         // it has one index less than cvxCrv -> wbtc
         totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT]);
         
-        // prior to return check if it is over _maxWbtc
+        // prior to return check if it is over _maxWbtc (follow BIP-68)
         totalWbtc = MathUpgradeable.min(_maxWbtc, totalWbtc);
     }
 
