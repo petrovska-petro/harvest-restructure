@@ -11,7 +11,7 @@ def test_collect_to_governance(
     balance_bCVX_before = bCVX.balanceOf(governance)
     balance_bCVXCRV_before = bCVXCRV.balanceOf(governance)
 
-    strategy.collectPerformanceFees()
+    strategy.collectPerformanceFees({"from": governance})
 
     balance_bCVX_after = bCVX.balanceOf(governance)
     balance_bCVXCRV_after = bCVXCRV.balanceOf(governance)

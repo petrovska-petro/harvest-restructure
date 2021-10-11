@@ -96,6 +96,9 @@ contract HarvestRestructure is
     uint256 public autoCompoundingBps;
     uint256 public autoCompoundingPerformanceFeeGovernance;
 
+    // match 1.1 naming for pool index
+    uint256 public constant crvCvxCrvPoolIndex = 2;
+
     // ===== additional addresses to support BIP-68 =====
     address public yieldDistributor;
     address public bTokenAddress;
@@ -103,11 +106,10 @@ contract HarvestRestructure is
     IibBTCV1Helper public ibBTCV1Helper;
 
     // ===== threshold params for swaps =====
-    uint256 public thresholdThreeCrv = 250 ether;
+    uint256 public thresholdThreeCrv;
 
     // ===== strategy params =====
-    uint256 public ibBTCRetentionBps = 6000;
-    uint256 public metaPoolIndex = 2;
+    uint256 public ibBTCRetentionBps;
 
     // ===== accum variables =====
     uint256 public pendingWbtcAccumForPpfsZapper;
@@ -327,17 +329,22 @@ contract HarvestRestructure is
         _setTokenSwapPath(crv, wbtc, path);
     }
 
-    function setConfigibBTCAddresses(
+    function setConfigibBTC(
         address _yieldDistributor,
         address _badgerSettPeak,
         address _bTokenAddress,
-        address _ibBTCV1Helper
+        address _ibBTCV1Helper,
+        uint256 _thresholdThreeCrv,
+        uint256 _ibBTCRetentionBps
     ) external {
         _onlyGovernance();
         yieldDistributor = _yieldDistributor;
         badgerSettPeak = _badgerSettPeak;
         bTokenAddress = _bTokenAddress;
         ibBTCV1Helper = IibBTCV1Helper(_ibBTCV1Helper);
+
+        thresholdThreeCrv = _thresholdThreeCrv;
+        ibBTCRetentionBps = _ibBTCRetentionBps;
     }
 
     /// @notice The more frequent the tend, the higher returns will be
@@ -352,7 +359,13 @@ contract HarvestRestructure is
 
         // 2. Convert CRV -> cvxCRV
         if (tendData.crvTended > 0) {
-            _exchange(crv, cvxCrv, metaPoolIndex, tendData.crvTended, true);
+            _exchange(
+                crv,
+                cvxCrv,
+                tendData.crvTended,
+                crvCvxCrvPoolIndex,
+                true
+            );
         }
 
         // Track harvested + converted coins
@@ -414,8 +427,8 @@ contract HarvestRestructure is
             _exchange(
                 crv,
                 cvxCrv,
-                metaPoolIndex,
                 crvToken.balanceOf(address(this)),
+                crvCvxCrvPoolIndex,
                 true
             );
             // note: here we get a bit extra of cvxCrv perhaps worthy to update `harvestData.cvxCrvHarvested`
@@ -432,7 +445,7 @@ contract HarvestRestructure is
                 .cvxCrvHarvested
                 .mul(autoCompoundingBps)
                 .div(MAX_FEE);
-            _exchange(cvxCrv, crv, metaPoolIndex, cvxCrvToSell, true);
+            _exchange(cvxCrv, crv, cvxCrvToSell, crvCvxCrvPoolIndex, true);
             _swapExactTokensForTokens(
                 sushiswap,
                 crv,
@@ -466,7 +479,7 @@ contract HarvestRestructure is
                 address(this),
                 getTokenSwapPath(crv, wbtc),
                 getTokenSwapPath(cvx, wbtc),
-                metaPoolIndex
+                crvCvxCrvPoolIndex
             );
             pendingWbtcAccumForPpfsZapper = pendingWbtcAccumForPpfsZapper.add(
                 wbtcToYieldDistr
@@ -642,10 +655,5 @@ contract HarvestRestructure is
     function setThresholdThreeCrv(uint256 _thresholdThreeCrv) external {
         _onlyGovernance();
         thresholdThreeCrv = _thresholdThreeCrv;
-    }
-
-    function setMetaPoolIndex(uint256 _metaPoolIndex) external {
-        _onlyGovernance();
-        metaPoolIndex = _metaPoolIndex;
     }
 }

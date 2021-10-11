@@ -176,11 +176,13 @@ def strategy(HarvestRestructure, config_addresses, deployer, bCVX, bCVXCRV, help
     # call patches for swapping route
     strategy.patchPaths({"from": config_addresses[0]})
     # config for BIP-68
-    strategy.setConfigibBTCAddresses(
+    strategy.setConfigibBTC(
         yieldDistributor,
         badgerSettPeak,
         bTokenAddress,
         helper.address,
+        Wei("250 ether"), # it can be tinker, but a min of 200-250 will make sense due to the cost of operation involved
+        6000,
         {"from": config_addresses[0]},
     )
 
