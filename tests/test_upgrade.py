@@ -14,7 +14,7 @@ def upgrade_strategy(proxyAdmin, strategy_proxy, strategyLogic, governance):
         {"from": governance},
     )
 
-
+# THIS TEST IS KEPT FOR TRACKING, BUT NEW WAY OF HANDLING UPGRADES WILL NOT NEED THIS TEST...
 def test_upgraded_crv_strats_storage(strategy, proxyAdminTest, helper, governance):
     strategy_proxy = proxyAdminTest[0]
     proxy_admin = proxyAdminTest[1]
@@ -51,7 +51,9 @@ def test_upgraded_crv_strats_storage(strategy, proxyAdminTest, helper, governanc
         badgerSettPeak,
         bTokenAddress,
         helper.address,
-        Wei("250 ether"), # it can be tinker, but a min of 200-250 will make sense due to the cost of operation involved
+        Wei(
+            "250 ether"
+        ),  # it can be tinker, but a min of 200-250 will make sense due to the cost of operation involved
         6000,
         {"from": governance},
     )

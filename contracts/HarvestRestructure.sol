@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin-upgradeable/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/token/ERC20/SafeERC20Upgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/utils/EnumerableSetUpgradeable.sol";
 
 import "interfaces/badger/ISettV4.sol";
 import "interfaces/badger/IibBTCV1Helper.sol";
@@ -28,8 +27,6 @@ contract HarvestRestructure is
     UniswapSwapper,
     TokenSwapPathRegistry
 {
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
-
     // ===== Token Registry =====
     address public constant wbtc = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -75,26 +72,15 @@ contract HarvestRestructure is
     ISettV4 public cvxHelperVault;
     ISettV4 public cvxCrvHelperVault;
 
-    struct RewardTokenConfig {
-        uint256 autoCompoundingBps;
-        uint256 autoCompoundingPerfFee;
-        uint256 treeDistributionPerfFee;
-        address tendConvertTo;
-        uint256 tendConvertBps;
-    }
-
     struct CurvePoolConfig {
         address swap;
         uint256 wbtcPosition;
         uint256 numElements;
     }
 
-    EnumerableSetUpgradeable.AddressSet internal extraRewards; // Tokens other than CVX and cvxCRV to process as rewards
-    mapping(address => RewardTokenConfig) public rewardsTokenConfig;
     CurvePoolConfig public curvePool;
 
     uint256 public autoCompoundingBps;
-    uint256 public autoCompoundingPerformanceFeeGovernance;
 
     // match 1.1 naming for pool index
     uint256 public constant crvCvxCrvPoolIndex = 2;
@@ -314,21 +300,6 @@ contract HarvestRestructure is
         }
     }
 
-    function patchPaths() external {
-        _onlyGovernance();
-        address[] memory path = new address[](3);
-        path[0] = usdc;
-        path[1] = weth;
-        path[2] = crv;
-        _setTokenSwapPath(usdc, crv, path);
-
-        path = new address[](3);
-        path[0] = crv;
-        path[1] = weth;
-        path[2] = wbtc;
-        _setTokenSwapPath(crv, wbtc, path);
-    }
-
     function setConfigibBTC(
         address _yieldDistributor,
         address _badgerSettPeak,
@@ -346,6 +317,7 @@ contract HarvestRestructure is
         thresholdThreeCrv = _thresholdThreeCrv;
         ibBTCRetentionBps = _ibBTCRetentionBps;
     }
+
 
     /// @notice The more frequent the tend, the higher returns will be
     function tend() external whenNotPaused returns (TendData memory tendData) {

@@ -160,6 +160,15 @@ def strategy(HarvestRestructure, config_addresses, deployer, bCVX, bCVXCRV, help
     pid = 6
     fee_config = [2000, 0, 50]
     curve_pool = ["0x93054188d876f558f4a66B2EF1d97d16eDf0895B", 1, 2]
+    # GETTING "Stack too deep when compiling inline assembly:" ERROR IS EVERYHING IS PACKED IN `initialize`
+    ibBTCAddressesConfig = [
+        yieldDistributor,
+        badgerSettPeak,
+        bTokenAddress,
+        helper.address,
+    ]
+    # `thresholdThreeCrv` can be tinker, but a min of 200-250 will make sense due to the cost of operation involved
+    ibBTCUintsConfig = [Wei("250 ether"), 6000]
 
     strategy.initialize(
         config_addresses[0],
@@ -170,18 +179,18 @@ def strategy(HarvestRestructure, config_addresses, deployer, bCVX, bCVXCRV, help
         want_config,
         pid,
         fee_config,
-        curve_pool,
+        curve_pool
     )
-
-    # call patches for swapping route
-    strategy.patchPaths({"from": config_addresses[0]})
+    
     # config for BIP-68
     strategy.setConfigibBTC(
         yieldDistributor,
         badgerSettPeak,
         bTokenAddress,
         helper.address,
-        Wei("250 ether"), # it can be tinker, but a min of 200-250 will make sense due to the cost of operation involved
+        Wei(
+            "250 ether"
+        ),  # it can be tinker, but a min of 200-250 will make sense due to the cost of operation involved
         6000,
         {"from": config_addresses[0]},
     )
