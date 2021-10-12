@@ -93,6 +93,7 @@ contract HarvestRestructure is
 
     // ===== threshold params for swaps =====
     uint256 public thresholdThreeCrv;
+    uint256 public crvCvxCrvSlippageToleranceBps;
 
     // ===== strategy params =====
     uint256 public ibBTCRetentionBps;
@@ -204,6 +205,8 @@ contract HarvestRestructure is
 
         _initializeApprovals();
         autoCompoundingBps = 2000;
+
+        crvCvxCrvSlippageToleranceBps = 500;
     }
 
     /// ===== View Functions =====
@@ -318,7 +321,6 @@ contract HarvestRestructure is
         ibBTCRetentionBps = _ibBTCRetentionBps;
     }
 
-
     /// @notice The more frequent the tend, the higher returns will be
     function tend() external whenNotPaused returns (TendData memory tendData) {
         _onlyAuthorizedActors();
@@ -331,10 +333,16 @@ contract HarvestRestructure is
 
         // 2. Convert CRV -> cvxCRV
         if (tendData.crvTended > 0) {
+            uint256 minCvxCrvOut = tendData
+                .crvTended
+                .mul(MAX_FEE.sub(crvCvxCrvSlippageToleranceBps))
+                .div(MAX_FEE);
+
             _exchange(
                 crv,
                 cvxCrv,
                 tendData.crvTended,
+                minCvxCrvOut,
                 crvCvxCrvPoolIndex,
                 true
             );
@@ -396,10 +404,17 @@ contract HarvestRestructure is
                 usdcToken.balanceOf(address(this)),
                 getTokenSwapPath(usdc, crv)
             );
+
+            uint256 minCvxCrvOut = crvToken
+                .balanceOf(address(this))
+                .mul(MAX_FEE.sub(crvCvxCrvSlippageToleranceBps))
+                .div(MAX_FEE);
+
             _exchange(
                 crv,
                 cvxCrv,
                 crvToken.balanceOf(address(this)),
+                minCvxCrvOut,
                 crvCvxCrvPoolIndex,
                 true
             );
@@ -417,7 +432,17 @@ contract HarvestRestructure is
                 .cvxCrvHarvested
                 .mul(autoCompoundingBps)
                 .div(MAX_FEE);
-            _exchange(cvxCrv, crv, cvxCrvToSell, crvCvxCrvPoolIndex, true);
+            uint256 minCrvOut = cvxCrvToSell
+                .mul(MAX_FEE.sub(crvCvxCrvSlippageToleranceBps))
+                .div(MAX_FEE);
+            _exchange(
+                cvxCrv,
+                crv,
+                cvxCrvToSell,
+                minCrvOut,
+                crvCvxCrvPoolIndex,
+                true
+            );
             _swapExactTokensForTokens(
                 sushiswap,
                 crv,
@@ -627,5 +652,10 @@ contract HarvestRestructure is
     function setThresholdThreeCrv(uint256 _thresholdThreeCrv) external {
         _onlyGovernance();
         thresholdThreeCrv = _thresholdThreeCrv;
+    }
+
+    function setCrvCvxCrvSlippageToleranceBps(uint256 _sl) external {
+        _onlyGovernance();
+        crvCvxCrvSlippageToleranceBps = _sl;
     }
 }
