@@ -145,7 +145,7 @@ abstract contract BaseStrategy is PausableUpgradeable, SettAccessControl {
 
     function setWithdrawalMaxDeviationThreshold(uint256 _threshold) external {
         _onlyGovernance();
-        require(_threshold <= MAX_FEE, "MAX_FEE!");
+        require(_threshold <= MAX_FEE, ">MAX_FEE!");
         withdrawalMaxDeviationThreshold = _threshold;
     }
 

@@ -584,7 +584,7 @@ contract HarvestRestructure is
         uint256 totalWantAfter = balanceOf();
         require(totalWantAfter >= totalWantBefore, "<!");
 
-        harvested = balanceOf().sub(totalWantBefore);
+        harvested = totalWantAfter.sub(totalWantBefore);
 
         emit Harvest(harvested, block.number);
     }
@@ -636,11 +636,13 @@ contract HarvestRestructure is
     /// ===== Permissioned Actions: Governance =====
     function setibBTCRetentionBps(uint256 _ibBTCRetentionBps) external {
         _onlyGovernance();
+        require(_ibBTCRetentionBps <= MAX_FEE, ">MAX_FEE!");
         ibBTCRetentionBps = _ibBTCRetentionBps;
     }
 
     function setAutoCompoundingBps(uint256 _bps) external {
         _onlyGovernance();
+        require(_bps <= MAX_FEE, ">MAX_FEE!");
         autoCompoundingBps = _bps;
     }
 

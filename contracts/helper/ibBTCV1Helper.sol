@@ -50,8 +50,9 @@ contract ibBTCV1Helper is CurveSwapper, UniswapSwapper {
         );
 
         // get wbtc rates
+        uint256 minCrvOut = _getDy(cvxCrv, crv, _metaPoolIndex, cvxCrvToWbtc);
         uint256[] memory minOuts = IUniswapRouterV2(sushiswap).getAmountsOut(
-            _getDy(cvxCrv, crv, _metaPoolIndex, cvxCrvToWbtc),
+            minCrvOut,
             _pathCrvWbtc
         );
 
@@ -64,7 +65,7 @@ contract ibBTCV1Helper is CurveSwapper, UniswapSwapper {
 
         // it has one index less than cvxCrv -> wbtc
         totalWbtc = totalWbtc.add(minOuts[WBTC_INDEX_OUTPUT]);
-        
+
         // prior to return check if it is over _maxWbtc (follow BIP-68)
         totalWbtc = MathUpgradeable.min(_maxWbtc, totalWbtc);
     }
@@ -74,18 +75,18 @@ contract ibBTCV1Helper is CurveSwapper, UniswapSwapper {
         internal
         returns (uint256)
     {
-        uint256 peakShare = IERC20Upgradeable(
-            IStrategy(_strategy).bTokenAddress()
-        ).balanceOf(IStrategy(_strategy).badgerSettPeak());
+        address bTokenAddress = IStrategy(_strategy).bTokenAddress();
+        uint256 peakShare = IERC20Upgradeable(bTokenAddress).balanceOf(
+            IStrategy(_strategy).badgerSettPeak()
+        );
 
-        uint256 totalSupply = IERC20Upgradeable(
-            IStrategy(_strategy).bTokenAddress()
-        ).totalSupply();
+        uint256 totalSupply = IERC20Upgradeable(bTokenAddress).totalSupply();
 
         return peakShare.mul(MAX_FEE).div(totalSupply);
     }
 
     /// @dev Calculates the amount of partnet token, which will be used to be converted for WBTC
+    /// Note: passed _stategy as argument, since while using the individual bps got "Stack too deep"
     function _partnerTokenibBTCPortion(
         uint256 _tokenAmount,
         uint256 _ibBTCHarvestShareBps,
